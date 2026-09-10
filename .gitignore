@@ -36,6 +36,7 @@ fixtures/device_frames/*.mp4
 # Logs
 *.log
 logs/
+.run/
 
 # OS
 Thumbs.db

@@ -13,7 +13,7 @@ Son güncelleme: 2026-09-11 (koordinatör oturumu başlangıcı).
 | 0 | Depo, ortam, kararlar | in-progress | İskelet kuruldu, bu commit ile |
 | 1 | Kalıcı proje ve temel arayüz | not-started | |
 | 2 | İş motoru, olaylar, bütçe | not-started | |
-| 3 | Sağlayıcılar ve model keşfi | not-started | OpenRouter key yok → contract/mock testleri hedef |
+| 3 | Sağlayıcılar ve model keşfi | implemented (canlı katalog dahil) | GET /providers/models CANLI: 437 model (OpenRouter), video kataloğu 29 model. generate_structured/video submit-poll-download/ElevenLabs mock (key yok, provider_live marker ile ayrı). 67/67 test geçti |
 | 4 | Emülatör köprüsü, eşzamanlı kayıt | done | synova_test AVD üzerinde CANLI doğrulandı: ADB keşif/screenshot/tap/swipe, normalize koordinat + stale-observation reddi, scrcpy ile 17.7sn gerçek kayıt (3 eylem sırasında, H264+opus, ffprobe ile doğrulandı), /devices preflight API'si (screenshot+touch+kayıt+ses testi) — 9/9 device_live pytest geçti |
 | 5 | Görsel operatör, gerçek çekim | not-started | LLM key gerektirir → key gelene kadar live-blocked |
 | 6 | Yönetmen, senaryo, animatic | not-started | LLM key gerektirir |
