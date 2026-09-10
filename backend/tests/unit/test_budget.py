@@ -21,6 +21,9 @@ def _project_with_budget(db_session, budget_microusd=100_000_000, name="Butce Te
         fps_den=1,
         placement_id="placement-1",
         budget_microusd=budget_microusd,
+        product_name="Test Urunu",
+        description="Test aciklamasi",
+        cta="Simdi indir",
     )
     return project
 

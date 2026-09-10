@@ -26,6 +26,10 @@ def put_brief(project_id: str, body: BriefPut, session: Session = Depends(get_se
             fps_den=body.fps_den,
             placement_id=body.placement_id,
             budget_microusd=body.budget_microusd,
+            product_name=body.product_name,
+            description=body.description,
+            cta=body.cta,
+            destination_url=body.destination_url,
         )
     except ServiceError as exc:
         return error_response(exc)

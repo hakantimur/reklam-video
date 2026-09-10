@@ -146,7 +146,8 @@ export const api = {
 
   listModels: () => request<ModelCatalogResponse>("/providers/models"),
 
-  listProjects: () => request<ProjectSummary[]>("/projects"),
+  listProjects: () =>
+    request<{ items: ProjectSummary[] }>("/projects").then((response) => response.items),
 
   createProject: (payload: CreateProjectPayload) =>
     request<ProjectSummary>("/projects", {
@@ -159,7 +160,26 @@ export const api = {
   saveBrief: (projectId: string, payload: BriefPayload) =>
     request<BriefResponse>(`/projects/${projectId}/brief`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      // Backend's `BriefPut` (backend/app/schemas/brief.py) uses frame-based
+      // duration and micro-USD budget, not the seconds/whole-dollars the UI
+      // works in — translate at the boundary rather than leaking backend
+      // storage units into the form.
+      body: JSON.stringify({
+        product_name: payload.product_name,
+        description: payload.description,
+        cta: payload.cta,
+        destination_url: payload.destination_url || null,
+        audience: payload.audience ?? "",
+        single_message: payload.single_message ?? "",
+        objective: payload.objective || "Uygulama indirmesi",
+        style_id: payload.style_id,
+        language: payload.language,
+        target_frames: Math.round(payload.duration_seconds * 30),
+        fps_num: 30,
+        fps_den: 1,
+        placement_id: payload.placement_id,
+        budget_microusd: Math.round(payload.budget_usd * 1_000_000),
+      }),
     }),
 
   openProjectFolder: (id: string) =>

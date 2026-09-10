@@ -11,8 +11,8 @@ Son güncelleme: 2026-09-11 (koordinatör oturumu başlangıcı).
 | Safha | Konu | Durum | Not |
 |---|---|---|---|
 | 0 | Depo, ortam, kararlar | in-progress | İskelet kuruldu, bu commit ile |
-| 1 | Kalıcı proje ve temel arayüz | in-progress | UI iskeleti (apps/web) implemented + `npm run build` geçti; backend tarafı (projects/brief/credentials uç noktaları) henüz yok, bkz. KNOWN_LIMITATIONS.md |
-| 2 | İş motoru, olaylar, bütçe | not-started | |
+| 1 | Kalıcı proje ve temel arayüz | done (bu round için) | Tam yığın CANLI doğrulandı: gerçek backend + gerçek derlenmiş UI, tarayıcıda proje oluşturma → brief kaydetme → klasör açma uçtan uca çalıştı. Entegrasyon sırasında bulunan 5 hata aynı oturumda düzeltildi, bkz. TEST_REPORT.md |
+| 2 | İş motoru, olaylar, bütçe | implemented | Job queue + SSE + bütçe defteri kodlandı ve test edildi (110→116 testin parçası); main.py'a bağlandı, canlı proje/job akışı çalıştı |
 | 3 | Sağlayıcılar ve model keşfi | implemented (canlı katalog dahil) | GET /providers/models CANLI: 437 model (OpenRouter), video kataloğu 29 model. generate_structured/video submit-poll-download/ElevenLabs mock (key yok, provider_live marker ile ayrı). 67/67 test geçti |
 | 4 | Emülatör köprüsü, eşzamanlı kayıt | done | synova_test AVD üzerinde CANLI doğrulandı: ADB keşif/screenshot/tap/swipe, normalize koordinat + stale-observation reddi, scrcpy ile 17.7sn gerçek kayıt (3 eylem sırasında, H264+opus, ffprobe ile doğrulandı), /devices preflight API'si (screenshot+touch+kayıt+ses testi) — 9/9 device_live pytest geçti |
 | 5 | Görsel operatör, gerçek çekim | not-started | LLM key gerektirir → key gelene kadar live-blocked |

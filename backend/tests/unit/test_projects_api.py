@@ -12,6 +12,16 @@ def test_create_and_get_project(api_client):
     assert fetched.json()["id"] == body["id"]
 
 
+def test_slug_transliterates_turkish_characters(api_client):
+    response = api_client.post("/api/v1/projects", json={"name": "Örnek Proje — Çığır Açış"})
+    slug = response.json()["slug"]
+    assert slug.startswith("ornek-proje")
+    assert "cigir" in slug
+    assert "acis" in slug
+    # no raw Turkish letters and no dropped-leading-character artifact
+    assert not any(ch in slug for ch in "çğıöşü")
+
+
 def test_list_projects_contains_created_project(api_client):
     created = api_client.post("/api/v1/projects", json={"name": "Liste Testi"}).json()
     listed = api_client.get("/api/v1/projects")
@@ -40,6 +50,25 @@ def test_patch_updates_and_bumps_version(api_client):
     body = patched.json()
     assert body["name"] == "Guncellenmis Isim"
     assert body["version"] == created["version"] + 1
+
+
+def test_open_folder_invokes_os_file_explorer_on_the_projects_own_path(api_client, monkeypatch):
+    created = api_client.post("/api/v1/projects", json={"name": "Klasor Testi"}).json()
+
+    opened_paths = []
+    monkeypatch.setattr(
+        "app.api.projects.os.startfile", lambda path: opened_paths.append(str(path)), raising=False
+    )
+
+    response = api_client.post(f"/api/v1/projects/{created['id']}/open-folder")
+    assert response.status_code == 204
+    assert opened_paths == [created["root_path"]]
+
+
+def test_open_folder_for_unknown_project_returns_structured_404(api_client):
+    response = api_client.post("/api/v1/projects/does-not-exist/open-folder")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
 
 
 def test_patch_with_stale_version_returns_409(api_client):

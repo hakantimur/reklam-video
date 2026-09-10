@@ -11,7 +11,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.project import Brief, Project
+from app.models.project import BrandProfile, Brief, Project
 from app.services.errors import NotFoundError, ValidationAppError, VersionConflictError
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
@@ -41,8 +41,17 @@ PROJECT_SUBDIRS = [
 ]
 
 
+_TR_TRANSLITERATION = str.maketrans(
+    {"ç": "c", "ğ": "g", "ı": "i", "ö": "o", "ş": "s", "ü": "u"}
+)
+
+
 def _slugify(name: str) -> str:
-    slug = _SLUG_RE.sub("-", name.strip().lower()).strip("-")
+    # Bare regex-stripping would silently drop Turkish letters entirely
+    # (e.g. "Örnek" -> "rnek") instead of a readable "ornek" — this app's
+    # default locale is tr-TR, so transliterate before stripping non-ASCII.
+    transliterated = name.strip().lower().translate(_TR_TRANSLITERATION)
+    slug = _SLUG_RE.sub("-", transliterated).strip("-")
     return slug or "project"
 
 
@@ -140,6 +149,9 @@ def update_project(
     return get_project(session, project_id)
 
 
+_DEFAULT_AUDIENCE = "Genel hedef kitle"
+
+
 def put_brief(
     session: Session,
     project_id: str,
@@ -154,15 +166,29 @@ def put_brief(
     fps_den: int,
     placement_id: str,
     budget_microusd: int,
+    product_name: str,
+    description: str,
+    cta: str,
+    destination_url: str | None = None,
 ) -> Brief:
     """Spec 8.1: `PUT /projects/{id}/brief` always creates a new brief revision.
 
     Briefs are append-only history — a PUT never mutates an existing row, so
     prior revisions stay available for audit/rollback even after the user
     changes their mind.
+
+    Spec 4.2: the brief screen also collects the brand profile's mandatory
+    fields (product_name/description/cta) in the same form; those live in
+    the separate `brand_profiles` table (spec 7.2) and are upserted here —
+    one row per project, not revisioned like briefs.
     """
 
     get_project(session, project_id)  # 404 if the project does not exist
+
+    # Spec 3.2: everything but product_name/description/cta "varsayılanla
+    # doldurulur" — a blank audience/single_message must not block the save.
+    resolved_audience = audience.strip() or _DEFAULT_AUDIENCE
+    resolved_single_message = single_message.strip() or description.strip()
 
     next_revision = (
         session.execute(
@@ -173,8 +199,8 @@ def put_brief(
     brief = Brief(
         project_id=project_id,
         revision=next_revision,
-        audience=audience,
-        single_message=single_message,
+        audience=resolved_audience,
+        single_message=resolved_single_message,
         objective=objective,
         style_id=style_id,
         language=language,
@@ -185,6 +211,18 @@ def put_brief(
         budget_microusd=budget_microusd,
     )
     session.add(brief)
+
+    brand_profile = session.execute(
+        select(BrandProfile).where(BrandProfile.project_id == project_id)
+    ).scalar_one_or_none()
+    if brand_profile is None:
+        brand_profile = BrandProfile(project_id=project_id)
+        session.add(brand_profile)
+    brand_profile.product_name = product_name
+    brand_profile.description = description
+    brand_profile.cta = cta
+    brand_profile.destination_url = destination_url or None
+
     session.commit()
     session.refresh(brief)
     return brief
