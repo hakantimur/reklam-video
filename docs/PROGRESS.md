@@ -11,7 +11,7 @@ Son güncelleme: 2026-09-11 (koordinatör oturumu başlangıcı).
 | Safha | Konu | Durum | Not |
 |---|---|---|---|
 | 0 | Depo, ortam, kararlar | in-progress | İskelet kuruldu, bu commit ile |
-| 1 | Kalıcı proje ve temel arayüz | not-started | |
+| 1 | Kalıcı proje ve temel arayüz | in-progress | UI iskeleti (apps/web) implemented + `npm run build` geçti; backend tarafı (projects/brief/credentials uç noktaları) henüz yok, bkz. KNOWN_LIMITATIONS.md |
 | 2 | İş motoru, olaylar, bütçe | not-started | |
 | 3 | Sağlayıcılar ve model keşfi | not-started | OpenRouter key yok → contract/mock testleri hedef |
 | 4 | Emülatör köprüsü, eşzamanlı kayıt | not-started | synova_test AVD hazır, key gerekmiyor → canlı test yapılabilir |
@@ -49,3 +49,4 @@ Ayrıntılı sonuçlar `docs/TEST_REPORT.md` içinde.
 | Zaman | Agent / dal | Kapsam | Sonuç |
 |---|---|---|---|
 | 2026-09-11 | coordinator (main) | Repo iskeleti, sözleşmeler | in-progress |
+| 2026-09-11 | agent/frontend-web | `apps/web` Vite+React+TS(strict)+Tailwind kurulumu; TanStack Query + Zustand; API client (spec §8.1 sözleşmesine göre tiplendi); Projeler/Stüdyo(Brief)/Malzemeler/İşler/Ayarlar ekranları + sol menü + router | implemented — `npm install` ve `npm run build` hatasız; `npm run dev` ile canlı doğrulandı (backend kapalıyken tüm ekranlar gerçek "bağlantı yok" durumunu gösteriyor, sahte veri yok) |

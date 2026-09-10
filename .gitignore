@@ -13,6 +13,7 @@ backend/**/__pycache__/
 node_modules/
 apps/web/dist/
 apps/web/.vite/
+apps/web/*.tsbuildinfo
 apps/render/out/
 apps/render/dist/
 .turbo/
