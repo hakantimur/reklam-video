@@ -133,3 +133,44 @@ def swipe(serial: str, x1: int, y1: int, x2: int, y2: int, duration_ms: int = 30
 
 def press_back(serial: str) -> None:
     _run(["-s", serial, "shell", "input", "keyevent", "KEYCODE_BACK"])
+
+
+# --- Emulator snapshots (spec 11.7: checkpoints) ---
+# Only meaningful for AVDs reached over the emulator console bridge
+# (`adb emu`); a physical device has no snapshot concept and these calls
+# will fail there, which callers must treat as "unsupported", not an error.
+
+
+def save_snapshot(serial: str, name: str) -> None:
+    output = _run(["-s", serial, "emu", "avd", "snapshot", "save", name], timeout=60.0)
+    if "OK" not in output:
+        raise AdbError(f"snapshot_save_failed: {output.strip()}")
+
+
+def load_snapshot(serial: str, name: str) -> None:
+    output = _run(["-s", serial, "emu", "avd", "snapshot", "load", name], timeout=60.0)
+    if "OK" not in output:
+        raise AdbError(f"snapshot_load_failed: {output.strip()}")
+
+
+def list_snapshots(serial: str) -> list[str]:
+    output = _run(["-s", serial, "emu", "avd", "snapshot", "list"], timeout=15.0)
+    names = []
+    for line in output.splitlines():
+        line = line.strip()
+        if not line or line in ("OK",) or line.startswith("There is no snapshot"):
+            continue
+        if line.startswith("List of snapshots") or line.startswith("ID"):
+            continue
+        # Columns: ID  TAG  VM SIZE  DATE  VM CLOCK — the snapshot name we
+        # pass to save/load is the TAG (2nd column), not the numeric ID.
+        columns = line.split()
+        if len(columns) >= 2:
+            names.append(columns[1])
+    return names
+
+
+def delete_snapshot(serial: str, name: str) -> None:
+    output = _run(["-s", serial, "emu", "avd", "snapshot", "delete", name], timeout=30.0)
+    if "OK" not in output:
+        raise AdbError(f"snapshot_delete_failed: {output.strip()}")
