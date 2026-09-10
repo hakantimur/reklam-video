@@ -1,0 +1,17 @@
+{
+  "name": "local-ad-director",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": "25.9.0"
+  },
+  "workspaces": [
+    "apps/web",
+    "apps/render"
+  ],
+  "scripts": {
+    "web:dev": "npm run dev --workspace apps/web",
+    "web:build": "npm run build --workspace apps/web",
+    "render:build": "npm run build --workspace apps/render"
+  }
+}

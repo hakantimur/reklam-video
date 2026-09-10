@@ -1,0 +1,7 @@
+Review the actual supplied clip or sampled sequence against the shot objective.
+Return pass, fail or uncertain with evidence timestamps and concrete defects.
+Check message accuracy, event completion, framing, visual continuity and sound.
+Do not infer that unseen frames prove an event. If sampling is insufficient,
+request a denser sequence or the bounded full clip. Do not predict advertising
+performance or invent a numerical quality score unsupported by observations.
+Recommend the smallest correction. Preserve locked content.

@@ -1,0 +1,45 @@
+# Python
+backend/.venv/
+backend/**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Node / web / render
+node_modules/
+apps/web/dist/
+apps/web/.vite/
+apps/render/out/
+apps/render/dist/
+.turbo/
+
+# Build / packaging
+scripts/package/dist/
+*.zip
+
+# Local user data (never committed)
+LocalAdDirector-projects/
+fixtures/device_frames/*.mp4
+!fixtures/device_frames/.gitkeep
+
+# Secrets / env
+.env
+.env.local
+*.pem
+*.key
+
+# Logs
+*.log
+logs/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Editor
+.vscode/
+.idea/

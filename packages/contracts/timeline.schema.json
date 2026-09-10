@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-ad-director/contracts/timeline.schema.json",
+  "title": "Timeline",
+  "type": "object",
+  "required": ["schema_version", "revision_id", "fps", "duration_frames", "canvas", "tracks"],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "revision_id": { "type": "string" },
+    "fps": {
+      "type": "object",
+      "required": ["num", "den"],
+      "properties": {
+        "num": { "type": "integer", "minimum": 1 },
+        "den": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "duration_frames": { "type": "integer", "minimum": 1 },
+    "canvas": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "items"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["video", "graphics", "audio", "subtitle"] },
+          "items": { "type": "array", "items": { "$ref": "#/$defs/track_item" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "track_item": {
+      "type": "object",
+      "required": ["id", "start_frame", "duration_frames"],
+      "properties": {
+        "id": { "type": "string" },
+        "shot_id": { "type": ["string", "null"] },
+        "asset_id": { "type": ["string", "null"] },
+        "start_frame": { "type": "integer", "minimum": 0 },
+        "duration_frames": { "type": "integer", "minimum": 1 },
+        "source_in_us": { "type": ["integer", "null"], "minimum": 0 },
+        "transform": { "type": "object" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "gain": { "type": "number" },
+        "lock": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import DateTime
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+def new_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class UUIDPrimaryKeyMixin:
+    id: Mapped[str] = mapped_column(primary_key=True, default=new_uuid)
+
+
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class VersionMixin:
+    """Optimistic concurrency counter. Spec 7.1: stale writes must 409, never
+    silently overwrite a concurrently updated entity."""
+
+    version: Mapped[int] = mapped_column(default=1)

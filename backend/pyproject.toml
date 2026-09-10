@@ -1,0 +1,43 @@
+[project]
+name = "local-ad-director-backend"
+version = "0.1.0"
+description = "Local Ad Director backend: FastAPI + SQLite job engine, provider adapters, device bridge"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "httpx>=0.27",
+    "keyring>=25.0",
+    "python-multipart>=0.0.12",
+    "opencv-python-headless>=4.10",
+    "scenedetect>=0.6.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "device_live: requires a real connected Android device/emulator",
+    "provider_live: requires a real, user-authorized provider API key",
+]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
