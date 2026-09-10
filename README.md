@@ -6,7 +6,9 @@ sahneleriyle birleştirir, ses/altyazı/logo/CTA ekleyip Facebook/Instagram/
 YouTube Shorts için MP4 üretir.
 
 Tam ürün ve mühendislik şartnamesi: [`docs/IMPLEMENTATION_SPEC_TR.md`](docs/IMPLEMENTATION_SPEC_TR.md).
+Kullanıcı rehberi (bugün ne çalışıyor): [`docs/USER_GUIDE_TR.md`](docs/USER_GUIDE_TR.md).
 Güncel uygulama durumu: [`docs/PROGRESS.md`](docs/PROGRESS.md).
+Test raporu: [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md).
 Bilinen sınırlamalar: [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md).
 Teknik/ürün kararları: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
