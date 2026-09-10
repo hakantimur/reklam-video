@@ -45,3 +45,6 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Downloaded third-party binaries (fetched by scripts/setup/fetch_binaries.py, never committed)
+backend/.tools/

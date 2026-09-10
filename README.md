@@ -44,3 +44,30 @@ START.bat
 ```
 
 `STOP.bat` yalnızca bu uygulamanın başlattığı süreçleri kapatır.
+
+## ffmpeg / scrcpy ve ortam tanısı
+
+`ffmpeg` ve `scrcpy` sisteme kurulu değilse (veya sürümü doğrulanmak
+isteniyorsa):
+
+```bash
+python scripts/setup/fetch_binaries.py   # backend/.tools/{ffmpeg,scrcpy}/ altına indirir, sürüm+SHA-256 doğrular
+python scripts/doctor/check_env.py       # node/python/adb/ffmpeg/scrcpy varlık+sürüm tanısı
+```
+
+`backend/.tools/` commit edilmez (bkz. `.gitignore`); yalnızca indirme betiği
+repoda tutulur. Kaynak seçimleri ve checksum doğrulama detayları
+`docs/DECISIONS.md`'de kayıtlıdır.
+
+## apps/render (Remotion)
+
+```bash
+npm install
+cd apps/render
+npx remotion studio src/index.ts          # interaktif önizleme
+npx remotion render src/index.ts AdComposition out/sample.mp4
+```
+
+Bu turda `video`/`audio` track item'ları gerçek asset yerine açıkça
+"PLACEHOLDER" etiketli render çıktısı üretir (bkz.
+`docs/KNOWN_LIMITATIONS.md`).
