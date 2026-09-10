@@ -11,7 +11,7 @@ Son güncelleme: 2026-09-11 (koordinatör oturumu başlangıcı).
 | Safha | Konu | Durum | Not |
 |---|---|---|---|
 | 0 | Depo, ortam, kararlar | in-progress | İskelet kuruldu, bu commit ile |
-| 1 | Kalıcı proje ve temel arayüz | not-started | |
+| 1 | Kalıcı proje ve temel arayüz | in-progress | UI iskeleti (apps/web) implemented + `npm run build` geçti; backend tarafı (projects/brief/credentials uç noktaları) henüz yok, bkz. KNOWN_LIMITATIONS.md |
 | 2 | İş motoru, olaylar, bütçe | not-started | |
 | 3 | Sağlayıcılar ve model keşfi | implemented (canlı katalog dahil) | GET /providers/models CANLI: 437 model (OpenRouter), video kataloğu 29 model. generate_structured/video submit-poll-download/ElevenLabs mock (key yok, provider_live marker ile ayrı). 67/67 test geçti |
 | 4 | Emülatör köprüsü, eşzamanlı kayıt | done | synova_test AVD üzerinde CANLI doğrulandı: ADB keşif/screenshot/tap/swipe, normalize koordinat + stale-observation reddi, scrcpy ile 17.7sn gerçek kayıt (3 eylem sırasında, H264+opus, ffprobe ile doğrulandı), /devices preflight API'si (screenshot+touch+kayıt+ses testi) — 9/9 device_live pytest geçti |
@@ -100,3 +100,16 @@ kontrol edildi: video track'teki placeholder dikdörtgenler "PLACEHOLDER" +
 item/shot id metniyle görünüyor, grafik track'teki `title`/`cta_card`/`logo`
 şablonları doğru zamanlamada beliriyor, audio track'ler için ekran üstü
 "AUDIO PLACEHOLDER" uyarıları doğru sürelerde görünüp kayboluyor.
+
+## Frontend (2026-09-11, agent/frontend-web)
+
+`apps/web` Vite+React+TS(strict)+Tailwind kurulumu; TanStack Query +
+Zustand; API client (spec §8.1 sözleşmesine göre tiplendi); Projeler/
+Stüdyo(Brief)/Malzemeler/İşler/Ayarlar ekranları + sol menü + router.
+`npm install` ve `npm run build` hatasız; `npm run dev` ile canlı
+doğrulandı — geliştirildiği anda backend'in çoğu uç noktası (projects,
+credentials, providers/models) henüz yoktu, bu yüzden tüm ekranlar o anda
+gerçek "bağlantı yok" durumunu gösteriyordu (sahte veri yok). Bu backend
+uç noktaları artık main'e merge edildi (bkz. yukarıdaki backend-jobs-api/
+provider-adapters satırları) — frontend'in gerçek backend'e karşı ne
+gösterdiği koordinatör tarafından ayrıca doğrulanacak, bkz. aşağıdaki not.

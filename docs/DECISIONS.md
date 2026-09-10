@@ -126,3 +126,34 @@ kabul testleri bu oyun ve bu AVD'ler üzerinden yürütülüyor. Örnek proje/br
 
 Node tarafında npm workspaces kullanıldı (npm zaten kurulu, ek araç kurulumu
 gerekmedi). pnpm/yarn'a geçiş ileride düşük riskli bir değişikliktir.
+
+## 2026-09-11 — apps/web bağımlılık sürümleri ve npm audit uyarıları
+
+`react-router-dom@^6.26` ve `vite@^5.4` seçildi (bu yazıda güncel kararlı
+6.x/5.x hatları). `npm audit`, ikisi için de yalnızca majör sürüm atlamasıyla
+(react-router-dom 7.x, vite 8.x) düzelen orta/yüksek risk uyarıları
+bildiriyor (React Router açık yönlendirme; esbuild dev-server istek sızıntısı
+— ikisi de yerel/tek kullanıcılı geliştirme bağlamında düşük etkili, üretim
+build'i esbuild dev-server'ı içermiyor). Bu safhada UI iskeletini
+oturtmak öncelikliydi; majör sürüm atlaması (özellikle react-router-dom v7
+API değişiklikleri) ayrı bir doğrulama gerektirir. Karar: şimdilik 6.x/5.x
+kalındı, bu bilinen risk KNOWN_LIMITATIONS.md'ye yazıldı; ilerleyen bir
+safhada React Router v7'ye geçiş değerlendirilebilir.
+
+## 2026-09-11 — TanStack Query: retry kapalı, networkMode "always"
+
+`apps/web/src/api/queryClient.ts` içinde varsayılan `retry` değeri `0`,
+`networkMode` değeri `"always"` yapıldı. Gerekçe: TanStack Query v5'in
+varsayılan retry mekanizması, iki deneme arasında `document.visibilityState
+=== 'hidden'` olduğunda (sekme arka planda/görünmezken) yeniden denemeyi
+süresiz "paused" durumunda bekletiyor ve bu sürede kullanıcıya hiçbir hata
+göstermiyor — canlı testte bu, "Ayarlar" ekranındaki tanılama sorgusunun
+sonsuza dek "yükleniyor" gibi görünmesine (aslında sessizce duraklamış
+olmasına) yol açtı. Bu davranış, spec §2.3/§5.4'ün gerektirdiği "gerçek,
+anlık hata durumu, sonsuz spinner yok" ilkesiyle doğrudan çelişiyor. Otomatik
+retry'ı kapatıp ilk hatayı hemen yüzeye çıkarmak, kullanıcıya her ekranda
+zaten var olan "Yeniden dene" düğmesiyle elle tekrar deneme imkânı vermek
+daha basit ve daha dürüst bir davranış. `networkMode: "always"` ayrıca
+backend'in yalnızca loopback (127.0.0.1) üzerinde çalıştığını, dolayısıyla
+işletim sisteminin genel internet bağlantısı durumundan bağımsız olması
+gerektiğini yansıtıyor.
