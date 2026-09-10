@@ -11,9 +11,13 @@ liste boşalana kadar kullanılmaz.
    Anahtar girilene kadar bu akışlar yalnızca mock/contract testleriyle
    doğrulanabilir; gerçek model çıktısı doğrulanmamıştır.
 2. **ElevenLabs API anahtarı yok (opsiyonel ikinci ses yolu).**
-3. **ffmpeg / scrcpy ikilik dosyaları makinede kurulu değildi**, otomatik
-   kurulum betikleriyle temin edilmesi gerekiyor; kurulum sırasında ağ erişimi
-   gerekir.
+3. **ffmpeg / scrcpy** başta bu makinede kurulu değildi; geliştirme/test
+   amacıyla resmi kaynaklardan (`Genymobile/scrcpy` GitHub releases v4.1,
+   `BtbN/FFmpeg-Builds` GitHub releases) elle indirilip `backend/.tools/`
+   altına yerleştirildi ve `app/core/tool_paths.py` bunları PATH'te yoksa
+   otomatik buluyor. Bu geçici/geliştirme kurulumudur — üretim `SETUP.bat`
+   akışı için sürüm sabitleme + checksum doğrulamalı resmi betik
+   (`scripts/setup/fetch_binaries.py`) ayrı bir agent tarafından hazırlanıyor.
 4. **Node sürümü LTS değil** (bkz. DECISIONS.md) — Remotion/derleme
    uyumluluğu bu sürümle doğrulanacak, sorun çıkarsa ayrıca raporlanacak.
 

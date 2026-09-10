@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.core.config import settings
+from app.core.tool_paths import find_binary
 
 
 @dataclass
@@ -31,7 +32,7 @@ def _run_version(argv: list[str]) -> tuple[bool, str | None, str | None]:
 
 
 def check_tool(name: str, binary: str, version_args: list[str]) -> ToolCheck:
-    resolved = shutil.which(binary)
+    resolved = find_binary(binary)
     if resolved is None:
         return ToolCheck(name=name, available=False, version=None, path=None, error="not_found")
     ok, version, error = _run_version([resolved, *version_args])

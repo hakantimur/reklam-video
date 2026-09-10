@@ -14,7 +14,7 @@ Son güncelleme: 2026-09-11 (koordinatör oturumu başlangıcı).
 | 1 | Kalıcı proje ve temel arayüz | not-started | |
 | 2 | İş motoru, olaylar, bütçe | not-started | |
 | 3 | Sağlayıcılar ve model keşfi | not-started | OpenRouter key yok → contract/mock testleri hedef |
-| 4 | Emülatör köprüsü, eşzamanlı kayıt | not-started | synova_test AVD hazır, key gerekmiyor → canlı test yapılabilir |
+| 4 | Emülatör köprüsü, eşzamanlı kayıt | done | synova_test AVD üzerinde CANLI doğrulandı: ADB keşif/screenshot/tap/swipe, normalize koordinat + stale-observation reddi, scrcpy ile 17.7sn gerçek kayıt (3 eylem sırasında, H264+opus, ffprobe ile doğrulandı), /devices preflight API'si (screenshot+touch+kayıt+ses testi) — 9/9 device_live pytest geçti |
 | 5 | Görsel operatör, gerçek çekim | not-started | LLM key gerektirir → key gelene kadar live-blocked |
 | 6 | Yönetmen, senaryo, animatic | not-started | LLM key gerektirir |
 | 7 | Çekim arşivi, retake | not-started | |
@@ -48,4 +48,9 @@ Ayrıntılı sonuçlar `docs/TEST_REPORT.md` içinde.
 
 | Zaman | Agent / dal | Kapsam | Sonuç |
 |---|---|---|---|
-| 2026-09-11 | coordinator (main) | Repo iskeleti, sözleşmeler | in-progress |
+| 2026-09-11 | coordinator (main) | Repo iskeleti, sözleşmeler | done, main'e push edildi |
+| 2026-09-11 | coordinator (device-bridge) | Safha 4: ADB/scrcpy köprüsü | done, canlı doğrulandı |
+| 2026-09-11 | agent/backend-jobs-api | Safha 1-2: job motoru, proje API | çalışıyor |
+| 2026-09-11 | agent/provider-adapters | Safha 3: OpenRouter/TTS adaptörleri | çalışıyor |
+| 2026-09-11 | agent/frontend-web | Frontend UI iskeleti | çalışıyor |
+| 2026-09-11 | agent/render-ffmpeg | Remotion + ffmpeg/scrcpy temini | çalışıyor |

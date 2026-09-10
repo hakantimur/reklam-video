@@ -37,6 +37,9 @@ markers = [
     "provider_live: requires a real, user-authorized provider API key",
 ]
 testpaths = ["tests"]
+# Default `pytest` runs stay hardware/network independent. Opt into live
+# suites explicitly: `pytest -m device_live` or `pytest -m provider_live`.
+addopts = "-m \"not device_live and not provider_live\""
 
 [tool.ruff]
 line-length = 100
