@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.api import ROUTERS as CORE_ROUTERS
 from app.api.devices import router as devices_router
 from app.api.health import router as health_router
 from app.api.providers import router as providers_router
@@ -17,6 +18,8 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(devices_router, prefix="/api/v1")
     app.include_router(providers_router, prefix="/api/v1")
+    for router in CORE_ROUTERS:
+        app.include_router(router, prefix="/api/v1")
 
     # Spec 20.2: the built UI is served by FastAPI in normal use; a Vite dev
     # server is only needed while actively developing the frontend. Mounted
