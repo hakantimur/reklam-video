@@ -154,6 +154,7 @@ def test_poll_maps_status_to_job_state():
     result = provider.poll("job-abc123")
     assert result.state == "completed"
     assert result.download_url == "https://storage.example.com/video.mp4"
+    assert result.cost_usd == 0.5
 
 
 def test_download_validates_and_saves_content(tmp_path: Path):

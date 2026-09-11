@@ -105,6 +105,11 @@ class VideoPollResult:
     progress_note: str | None = None
     download_url: str | None = None
     error: str | None = None
+    # Real, provider-confirmed spend (OpenRouter's `usage.cost`, in USD) —
+    # only ever a number the provider itself reports, never an estimate
+    # (see `estimate_cost()` for the pre-flight guess, which is unreliable
+    # for most real models' pricing shapes).
+    cost_usd: float | None = None
 
 
 @runtime_checkable

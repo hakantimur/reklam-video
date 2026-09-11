@@ -11,6 +11,7 @@ the same way in later rounds; none of that domain logic is in scope here.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from sqlalchemy.orm import Session
@@ -143,7 +144,33 @@ def _generate_ai_scene(session: Session, job: Job) -> dict:
     finally:
         client.close()
 
+    _settle_real_cost(session, job, asset_id=take.asset_id)
+
     return {"take_id": take.id, "asset_id": take.asset_id, "status": take.status, "attempt": take.attempt}
+
+
+def _settle_real_cost(session: Session, job: Job, *, asset_id: str) -> None:
+    """Best-effort: record the video provider's own confirmed spend
+    (`Asset.metadata_json.provider.actual_cost_usd`, from OpenRouter's
+    `usage.cost` — never an estimate) as a `BudgetEntry` settlement.
+    Deliberately never lets a bookkeeping failure fail an otherwise
+    successful generation job — this is real spend tracking, not a gate."""
+
+    from app.models.asset import Asset
+    from app.services import budget as budget_service
+
+    try:
+        asset = session.get(Asset, asset_id)
+        if asset is None:
+            return
+        cost_usd = (asset.metadata_json or {}).get("provider", {}).get("actual_cost_usd")
+        if not cost_usd:
+            return
+        budget_service.settle(
+            session, job.project_id, job_id=job.id, actual_amount_microusd=round(cost_usd * 1_000_000)
+        )
+    except Exception:  # noqa: BLE001 - spend bookkeeping must never fail a real, already-succeeded job
+        logging.getLogger(__name__).exception("Failed to settle real cost for job %s", job.id)
 
 
 @register_handler("generate_voice")

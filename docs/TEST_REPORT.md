@@ -371,6 +371,30 @@ tarayıcıda CANLI denendi:
 
 `pytest -q`: 192 passed, 11 deselected.
 
+## Gerçek maliyet kaydı: video üretimi (2026-09-11, dördüncü tur)
+
+`OpenRouterVideoProvider.poll()` gerçek API yanıtında zaten var olan ama
+hiç okunmayan `usage.cost` alanını (sağlayıcının kendi onayladığı gerçek
+harcama — tahmin değil) `VideoPollResult.cost_usd`'ye taşıyacak şekilde
+düzeltildi. `generate_ai_scene` job handler'ı bunu artık gerçek bir
+`BudgetEntry` (settlement, confidence=confirmed) satırına yazıyor —
+bir bütçe/gate değil, saf harcama defteri; bir ayarlama hatası asla
+başarılı bir job'u başarısız hale getirmiyor (`_settle_real_cost` her
+zaman best-effort, testlerle doğrulandı: eksik maliyet, eksik asset,
+çift settle — hiçbiri exception fırlatmıyor).
+
+Gerçek Synova projesinde bir AI sahnesi yeniden üretilerek CANLI
+doğrulandı:
+
+```
+Asset.metadata_json.provider.actual_cost_usd: 0.32
+BudgetEntry: entry_type=settlement, amount_microusd=320000, confidence=confirmed
+```
+
+`pytest -q`: 196 passed, 11 deselected (4 yeni test:
+`test_settle_real_cost.py`, artı `test_openrouter_video_flow.py`'ye bir
+assertion eklendi).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

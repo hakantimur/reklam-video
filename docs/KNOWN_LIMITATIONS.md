@@ -196,9 +196,17 @@ liste boşalana kadar kullanılmaz.
    export render'ları göründü), İşler gerçek iş geçmişiyle (tür/durum/
    geçen süre/hata + duraklat/devam ettir/iptal, tüm gecenin gerçek
    discover/capture/generate/render job'ları göründü, biri gerçek bir
-   `handler_error` ile). Maliyet sütunu hâlâ bağlanmadı — `BudgetEntry`
-   modeli var ama hiçbir job handler'ı (discover/capture/generate/render/
-   export) onu yazmıyor.
+   `handler_error` ile). **Maliyet takibi kısmen çözüldü (2026-09-11,
+   dördüncü tur)**: `generate_ai_scene` artık OpenRouter'ın video poll
+   yanıtındaki gerçek `usage.cost` alanını (tahmin değil, sağlayıcının
+   kendi onayladığı gerçek harcama) okuyup hem Asset metadata'sına hem
+   gerçek bir `BudgetEntry` (`entry_type=settlement, confidence=confirmed`)
+   satırına yazıyor — CANLI doğrulandı (gerçek $0.32 harcama gerçek bir
+   satıra dönüştü). `discover`/`capture_shot`/`generate_voice`/
+   `render_preview`/`export_final` hâlâ hiçbir maliyet kaydı yazmıyor —
+   chat completion (yönetmen/operatör) çağrılarının gerçek maliyeti hâlâ
+   izlenmiyor, ElevenLabs TTS'in de kendi yanıtında kullanılabilir bir
+   maliyet alanı doğrulanmadı.
 4. **npm audit: 4 orta/yüksek risk uyarısı** (`react-router-dom` açık
    yönlendirme, `esbuild` dev-server isteği sızıntısı). İkisi de yalnızca
    majör sürüm atlamasıyla (`react-router-dom` 6→7, `vite` 5→8) düzeltiliyor;

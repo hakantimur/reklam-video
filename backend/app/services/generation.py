@@ -135,7 +135,14 @@ def generate_ai_scene_take(
         dimensions_json={"width": report.probe.width, "height": report.probe.height} if report.probe else {},
         metadata_json={
             "technical_qc": {"outcome": report.outcome, "checks": report.checks, "errors": report.errors},
-            "provider": {"model": video_model, "remote_id": remote_id, "prompt": shot.generation_prompt},
+            "provider": {
+                "model": video_model,
+                "remote_id": remote_id,
+                "prompt": shot.generation_prompt,
+                # Real, provider-confirmed spend (OpenRouter's `usage.cost`)
+                # — never an estimate. None when the provider didn't report one.
+                "actual_cost_usd": result.cost_usd,
+            },
         },
     )
     session.add(asset)

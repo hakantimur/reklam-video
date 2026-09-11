@@ -347,12 +347,14 @@ class OpenRouterVideoProvider:
         payload = response.json()
         status = payload["status"]
         unsigned_urls = payload.get("unsigned_urls") or []
+        usage = payload.get("usage") or {}
         return VideoPollResult(
             remote_id=remote_id,
             state=_VIDEO_STATUS_TO_STATE.get(status, "running"),
             progress_note=status,
             download_url=unsigned_urls[0] if unsigned_urls else None,
             error=payload.get("error"),
+            cost_usd=usage.get("cost"),
         )
 
     def download(self, remote_id: str, destination: Path) -> Path:
