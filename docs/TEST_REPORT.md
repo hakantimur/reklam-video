@@ -233,6 +233,31 @@ incelendi:
 `pytest -q`: 172 passed, 11 deselected (10 yeni test:
 `test_timeline_service.py`, `test_render_service.py`, `test_render_api.py`).
 
+## Safha 10 canlı varyasyon kanıtı (2026-09-11, gerçek OpenRouter anahtarı)
+
+`POST /projects/{id}/revisions/{revision_id}/variation`, gerçek Synova
+projesinin revizyon 1'i üzerinden, yalnızca CTA sahnesine gerçek bir
+talimatla ("CTA'yı daha aciliyetli yap, sınırlı süreli ücretsiz deneme
+vurgusu ekle") çağrıldı:
+
+- Yeni revizyon (`sequence_no: 2`, `parent_id`: revizyon 1) gerçekten
+  oluşturuldu.
+- CTA sahnesi gerçekten yeniden yazıldı: `caption_text` → "Ücretsiz
+  Deneyin - Sınırlı Süre", `voice_text` talimatı yansıtan yeni bir Türkçe
+  cümleye dönüştü, `target_frames` talep edilmediği için 75 olarak
+  **değişmedi** (spec'in kilitli/sabit alan kuralı doğrulandı).
+- Diğer 5 sahne birebir taşındı; gerçek bir gameplay Take'i (`asset_id
+  f421aa8e-...`), yeni revizyondaki yeni Shot id altında **aynı
+  asset_id**'yi referanslayan **yeni bir Take satırı** olarak yeniden
+  bağlandı — doğrudan SQL sorgusuyla doğrulandı (Take.shot_id hard FK
+  olduğu için, fiziksel video dosyası değişmeden yeniden ilişkilendirildi).
+- Ayrı bir mock testte, görsel kilitli bir sahneye talimat verildiğinde
+  isteğin sessizce yok sayılmadığı, açık bir 422 ile reddedildiği
+  doğrulandı.
+
+`pytest -q`: 178 passed, 11 deselected (6 yeni test:
+`test_revisions_service.py` + `test_revisions_api.py`).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

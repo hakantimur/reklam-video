@@ -103,6 +103,23 @@ liste boşalana kadar kullanılmaz.
    — timeline tamamen sunucu tarafında, sahne sırasına göre otomatik
    üretiliyor.
 
+## Safha 10 — revizyon/kilit/varyasyon (2026-09-11)
+
+1. **UI yok.** Varyasyon üretimi yalnızca API üzerinden kullanılabilir;
+   Stüdyo'da revizyonlar arası karşılaştırma, kilit açma/kapama veya
+   "bu sahneyi revize et" ekranı henüz eklenmedi.
+2. **Yalnızca tek-sahne revizyonu var.** Bir çağrıda birden fazla sahne
+   revize edilebilir (`shot_instructions` bir dict), ama her biri ayrı bir
+   LLM çağrısıyla, sırayla işleniyor — toplu/tutarlı bir "tüm reklamı yeniden
+   düşün" modu yok.
+3. **Kilit yalnızca `visual` alanı için zorunlu kılınıyor.** `voice`/
+   `caption`/`timing` kilitleri varsa, yönetmenin döndürdüğü yeni değer
+   yerine eski değer korunuyor (kodda var), ama bu üç kilit için `visual`
+   gibi açık bir 422 reddi yok — yalnızca sessizce eski değer kullanılıyor.
+   `visual` özel: onu değiştirmeye çalışmak baştan reddediliyor, çünkü
+   hangi Take'in kullanılacağı LLM çıktısına değil ayrı bir çekim/üretim
+   adımına bağlı.
+
 ## Frontend (apps/web) — Safha 1 UI iskeleti (2026-09-11, agent/frontend-web)
 
 1. **Backend'in çoğu uç noktası henüz yok.** `backend/app/main.py` şu an

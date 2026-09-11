@@ -1,0 +1,173 @@
+"""Spec §21 Safha 10: revision/lock/variation engine.
+
+A variation creates a new Revision from an existing one: every shot the
+caller does not explicitly target is carried forward byte-for-byte
+(including its selected take, re-registered under the new shot id since
+`Take.shot_id` is a hard FK); a shot explicitly targeted is re-generated
+by the director agent per a free-text instruction — unless it is
+visual-locked, in which case the request is rejected outright rather than
+silently ignored (spec: a lock blocks a change, it does not silently eat
+it).
+"""
+
+import hashlib
+import json
+from datetime import datetime, timezone
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.agents.director import regenerate_shot
+from app.models.creative import Revision, Shot, Take
+from app.providers.base import TextVisionProvider
+from app.services import plans as plans_service
+from app.services import projects as projects_service
+from app.services.errors import NotFoundError, ValidationAppError
+
+
+def _get_revision(session: Session, project_id: str, revision_id: str) -> Revision:
+    revision = session.get(Revision, revision_id)
+    if revision is None or revision.project_id != project_id:
+        raise NotFoundError(f"Revision {revision_id} not found", details={"revision_id": revision_id})
+    return revision
+
+
+def create_revision_variation(
+    session: Session,
+    project_id: str,
+    base_revision_id: str,
+    *,
+    shot_instructions: dict[str, str],
+    provider: TextVisionProvider,
+    model: str,
+) -> Revision:
+    if not shot_instructions:
+        raise ValidationAppError("En az bir sahne için revizyon talimatı verilmelidir.")
+
+    base_revision = _get_revision(session, project_id, base_revision_id)
+    base_shots = plans_service.get_shots_for_revision(session, base_revision.id)
+    if not base_shots:
+        raise ValidationAppError("Base revizyonda hiç sahne yok.", details={"revision_id": base_revision_id})
+
+    base_shots_by_id = {s.id: s for s in base_shots}
+    unknown_ids = sorted(set(shot_instructions) - set(base_shots_by_id))
+    if unknown_ids:
+        raise ValidationAppError(
+            f"Bilinmeyen sahne id'leri: {unknown_ids}", details={"unknown_shot_ids": unknown_ids}
+        )
+
+    locked_but_instructed = sorted(
+        shot_id
+        for shot_id in shot_instructions
+        if (base_shots_by_id[shot_id].locks_json or {}).get("visual")
+    )
+    if locked_but_instructed:
+        raise ValidationAppError(
+            f"Şu sahneler görsel olarak kilitli, önce kilidi açılmalı: {locked_but_instructed}",
+            details={"locked_shot_ids": locked_but_instructed},
+        )
+
+    brief = projects_service.get_latest_brief(session, project_id)
+    brand = projects_service.get_brand_profile(session, project_id)
+    if brief is None or brand is None:
+        raise ValidationAppError("Brief/marka bilgisi olmadan varyasyon üretilemez.")
+
+    next_sequence = (
+        session.execute(
+            select(func.coalesce(func.max(Revision.sequence_no), 0)).where(Revision.project_id == project_id)
+        ).scalar_one()
+        + 1
+    )
+
+    new_revision = Revision(
+        project_id=project_id,
+        parent_id=base_revision.id,
+        brief_id=base_revision.brief_id,
+        sequence_no=next_sequence,
+        status="draft",
+        timeline_json={},
+        content_hash="pending",
+        created_at=datetime.now(timezone.utc),
+        change_summary=(
+            f"Revizyon {base_revision.sequence_no} üzerinden varyasyon: "
+            f"{len(shot_instructions)} sahne revize edildi, "
+            f"{len(base_shots) - len(shot_instructions)} sahne değişmeden korundu"
+        ),
+    )
+    session.add(new_revision)
+    session.flush()
+
+    for index, base_shot in enumerate(base_shots):
+        instruction = shot_instructions.get(base_shot.id)
+        locks = base_shot.locks_json or {}
+
+        if instruction:
+            revised = regenerate_shot(
+                provider, model, brief=brief, brand=brand, base_shot=base_shot, instruction=instruction
+            )
+            new_shot = Shot(
+                revision_id=new_revision.id,
+                order_index=index,
+                source_type=revised.source_type,
+                purpose=revised.purpose,
+                desired_event=revised.desired_event,
+                start_state_json=revised.start_state,
+                success_predicate_json=revised.success_predicate.model_dump(),
+                action_constraints_json=revised.action_constraints.model_dump(),
+                target_frames=revised.target_frames,
+                handles_frames=revised.handles_frames.model_dump(),
+                caption_text=revised.caption if not locks.get("caption") else base_shot.caption_text,
+                voice_text=revised.voice_text if not locks.get("voice") else base_shot.voice_text,
+                locks_json=locks,
+            )
+            session.add(new_shot)
+            session.flush()
+        else:
+            new_shot = Shot(
+                revision_id=new_revision.id,
+                order_index=index,
+                source_type=base_shot.source_type,
+                purpose=base_shot.purpose,
+                desired_event=base_shot.desired_event,
+                start_state_json=base_shot.start_state_json,
+                success_predicate_json=base_shot.success_predicate_json,
+                action_constraints_json=base_shot.action_constraints_json,
+                target_frames=base_shot.target_frames,
+                handles_frames=base_shot.handles_frames,
+                character_id=base_shot.character_id,
+                generation_prompt=base_shot.generation_prompt,
+                voice_text=base_shot.voice_text,
+                caption_text=base_shot.caption_text,
+                locks_json=locks,
+            )
+            session.add(new_shot)
+            session.flush()
+
+            if base_shot.selected_take_id:
+                base_take = session.get(Take, base_shot.selected_take_id)
+                if base_take is not None:
+                    carried_take = Take(
+                        shot_id=new_shot.id,
+                        asset_id=base_take.asset_id,
+                        attempt=1,
+                        status=base_take.status,
+                        in_us=base_take.in_us,
+                        out_us=base_take.out_us,
+                        event_evidence_json=base_take.event_evidence_json,
+                        quality_json=base_take.quality_json,
+                        rejection_reason=base_take.rejection_reason,
+                    )
+                    session.add(carried_take)
+                    session.flush()
+                    new_shot.selected_take_id = carried_take.id
+
+    session.flush()
+    new_shots = plans_service.get_shots_for_revision(session, new_revision.id)
+    plan_fingerprint = json.dumps(
+        [{"id": s.id, "purpose": s.purpose, "target_frames": s.target_frames} for s in new_shots],
+        ensure_ascii=False,
+    )
+    new_revision.content_hash = hashlib.sha256(plan_fingerprint.encode("utf-8")).hexdigest()
+    session.commit()
+    session.refresh(new_revision)
+    return new_revision

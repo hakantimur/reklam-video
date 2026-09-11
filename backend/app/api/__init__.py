@@ -10,6 +10,7 @@ from app.api import (
     plans,
     projects,
     render,
+    revisions,
     settings,
 )
 
@@ -30,6 +31,7 @@ ROUTERS = [
     capture.router,
     generation.router,
     render.router,
+    revisions.router,
 ]
 
 __all__ = ["ROUTERS"]
