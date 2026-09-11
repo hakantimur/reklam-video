@@ -239,6 +239,12 @@ export const api = {
       body: JSON.stringify({ caption_text: captionText }),
     }),
 
+  reorderShots: (projectId: string, revisionId: string, shotOrder: string[]) =>
+    request<PlanShot[]>(`/projects/${projectId}/revisions/${revisionId}/order`, {
+      method: "PUT",
+      body: JSON.stringify({ shot_order: shotOrder }),
+    }),
+
   createVariation: (
     projectId: string,
     revisionId: string,

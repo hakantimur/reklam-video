@@ -805,3 +805,27 @@ yazma, temizleme/`null`, bilinmeyen sahne 404), `test_revisions_api.py`
 (2 test).
 
 `npm run build` temiz. `pytest -q`: **234 passed, 11 deselected**.
+
+## Klip taşıma: sahne sıralama (2026-09-11, sekizinci tur devamı)
+
+Spec §5.3'ün bir diğer editör zorunlu işlemi: "klip taşıma". `order_index`
+saf bir pozisyon alanı olduğundan (Asset işaretçisi değil), kilit/altyazı
+düzenlemeleriyle aynı "yerinde güncelle, yeni revizyon açma" deseniyle
+`reorder_shots` eklendi — `PUT /projects/{id}/revisions/{revision_id}/order`,
+`shot_order`'ın revizyonun TÜM sahnelerinin bir permütasyonu olduğunu
+doğruluyor (eksik/fazla/yabancı id varsa 422). Senaryo ekranındaki her
+sahne kartına ▲/▼ taşıma düğmeleri eklendi.
+
+**Canlı kanıt** (gerçek Synova projesi, revizyon `4f3f7dc4-…`):
+1. İki oynanış sahnesi (`0c749b7f-…`/`d4b346d2-…`) yer değiştirildi —
+   `PUT .../order` yanıtı doğru yeni `order_index` sırasını döndü.
+2. `POST .../timeline/build` yeniden çağrıldı — video track'indeki
+   `start_frame` sıralaması gerçekten yeni sahne sırasını yansıttı.
+3. Orijinal sıra geri yüklendi, gerçek proje verisi test öncesi hâline
+   döndürüldü.
+
+Birim testleri eklendi: `test_revisions_service.py` (3 test — yerinde
+güncelleme, permütasyon olmayan giriş reddi, bilinmeyen revizyon 404),
+`test_revisions_api.py` (2 test).
+
+`npm run build` temiz. `pytest -q`: **239 passed, 11 deselected**.

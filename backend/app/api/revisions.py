@@ -31,6 +31,10 @@ class ShotCaptionPatch(BaseModel):
     caption_text: str | None = None
 
 
+class ReorderRequest(BaseModel):
+    shot_order: list[str]
+
+
 class ShotOut(BaseModel):
     id: str
     order_index: int
@@ -141,3 +145,16 @@ def update_shot_caption(
     except ServiceError as exc:
         return error_response(exc)
     return _shot_out(shot)
+
+
+@router.put("/projects/{project_id}/revisions/{revision_id}/order", response_model=list[ShotOut])
+def reorder_shots(
+    project_id: str, revision_id: str, body: ReorderRequest, session: Session = Depends(get_session)
+):
+    """Spec §5.3 "klip taşıma": reorder a revision's shots in place."""
+
+    try:
+        shots = revisions_service.reorder_shots(session, project_id, revision_id, body.shot_order)
+    except ServiceError as exc:
+        return error_response(exc)
+    return [_shot_out(s) for s in shots]

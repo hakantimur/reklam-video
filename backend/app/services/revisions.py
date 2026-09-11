@@ -132,6 +132,30 @@ def set_shot_caption(session: Session, project_id: str, shot_id: str, caption_te
     return shot
 
 
+def reorder_shots(session: Session, project_id: str, revision_id: str, shot_order: list[str]) -> list[Shot]:
+    """Spec §5.3 "klip taşıma": reorder a revision's shots in place. Like
+    the lock/caption edits above, this is a positional/metadata edit, not
+    new AI-generated content, so it does not mint a new revision — it
+    directly updates `order_index` on the current revision's Shot rows.
+    `shot_order` must be a permutation of that revision's own shot ids
+    (nothing added, removed, or borrowed from another revision)."""
+
+    revision = _get_revision(session, project_id, revision_id)
+    shots = plans_service.get_shots_for_revision(session, revision.id)
+    shots_by_id = {s.id: s for s in shots}
+
+    if set(shot_order) != set(shots_by_id):
+        raise ValidationAppError(
+            "shot_order, revizyonun tüm sahnelerinin bir permütasyonu olmalı (eksik/fazla/yabancı id yok).",
+            details={"expected_shot_ids": sorted(shots_by_id), "received_shot_ids": sorted(set(shot_order))},
+        )
+
+    for index, shot_id in enumerate(shot_order):
+        shots_by_id[shot_id].order_index = index
+    session.commit()
+    return [shots_by_id[sid] for sid in shot_order]
+
+
 def create_revision_variation(
     session: Session,
     project_id: str,

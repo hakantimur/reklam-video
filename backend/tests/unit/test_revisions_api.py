@@ -81,3 +81,53 @@ def test_update_shot_caption_unknown_shot_is_404(api_client):
         f"/api/v1/projects/{project['id']}/shots/does-not-exist/caption", json={"caption_text": "x"}
     )
     assert response.status_code == 404
+
+
+def _setup_two_shots(db_session, project_id):
+    from datetime import datetime, timezone
+
+    from app.models.creative import Revision, Shot
+    from app.services import projects as projects_service
+
+    projects_service.put_brief(
+        db_session, project_id, audience="t", single_message="t", objective="install",
+        style_id="s", language="tr", target_frames=180, fps_num=30, fps_den=1,
+        placement_id="p", budget_microusd=1, product_name="X", description="d", cta="c",
+    )
+    brief = projects_service.get_latest_brief(db_session, project_id)
+    revision = Revision(
+        project_id=project_id, brief_id=brief.id, sequence_no=1, status="draft",
+        timeline_json={}, content_hash="x", created_at=datetime.now(timezone.utc),
+    )
+    db_session.add(revision)
+    db_session.flush()
+    shot_a = Shot(revision_id=revision.id, order_index=0, source_type="ai_generated", purpose="A", target_frames=90)
+    shot_b = Shot(revision_id=revision.id, order_index=1, source_type="composed", purpose="B", target_frames=90)
+    db_session.add_all([shot_a, shot_b])
+    db_session.commit()
+    return revision, shot_a, shot_b
+
+
+def test_reorder_shots_swaps_order(api_client, db_session):
+    project = api_client.post("/api/v1/projects", json={"name": "Siralama API Testi"}).json()
+    revision, shot_a, shot_b = _setup_two_shots(db_session, project["id"])
+
+    response = api_client.put(
+        f"/api/v1/projects/{project['id']}/revisions/{revision.id}/order",
+        json={"shot_order": [shot_b.id, shot_a.id]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [s["id"] for s in body] == [shot_b.id, shot_a.id]
+    assert [s["order_index"] for s in body] == [0, 1]
+
+
+def test_reorder_shots_rejects_a_non_permutation_via_api(api_client, db_session):
+    project = api_client.post("/api/v1/projects", json={"name": "Siralama 422 Testi"}).json()
+    revision, shot_a, shot_b = _setup_two_shots(db_session, project["id"])
+
+    response = api_client.put(
+        f"/api/v1/projects/{project['id']}/revisions/{revision.id}/order",
+        json={"shot_order": [shot_a.id]},
+    )
+    assert response.status_code == 422

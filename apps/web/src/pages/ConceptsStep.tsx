@@ -72,6 +72,12 @@ export function ConceptsStep({ projectId }: { projectId: string }) {
     },
   });
 
+  const reorderShots = useMutation({
+    mutationFn: (params: { revisionId: string; shotOrder: string[] }) =>
+      api.reorderShots(projectId, params.revisionId, params.shotOrder),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", projectId] }),
+  });
+
   const concepts = conceptsQuery.data ?? [];
 
   return (
@@ -200,7 +206,7 @@ export function ConceptsStep({ projectId }: { projectId: string }) {
 
             {planQuery.data ? (
               <div className="flex flex-col gap-2">
-                {planQuery.data.shots.map((shot) => (
+                {planQuery.data.shots.map((shot, index, shots) => (
                   <ShotCard
                     key={shot.id}
                     projectId={projectId}
@@ -209,9 +215,24 @@ export function ConceptsStep({ projectId }: { projectId: string }) {
                     onInstructionChange={(text) =>
                       setInstructions((prev) => ({ ...prev, [shot.id]: text }))
                     }
+                    canMoveUp={index > 0}
+                    canMoveDown={index < shots.length - 1}
+                    movePending={reorderShots.isPending}
+                    onMove={(direction) => {
+                      if (!currentRevisionId) return;
+                      const target = index + (direction === "up" ? -1 : 1);
+                      if (target < 0 || target >= shots.length) return;
+                      const order = shots.map((s) => s.id);
+                      const moved = order.splice(index, 1)[0]!;
+                      order.splice(target, 0, moved);
+                      reorderShots.mutate({ revisionId: currentRevisionId, shotOrder: order });
+                    }}
                   />
                 ))}
               </div>
+            ) : null}
+            {reorderShots.isError ? (
+              <ErrorBanner title="Sıra değiştirilemedi" message={describeApiError(reorderShots.error)} />
             ) : null}
 
             {planQuery.data ? (
@@ -310,11 +331,19 @@ function ShotCard({
   shot,
   instruction,
   onInstructionChange,
+  canMoveUp,
+  canMoveDown,
+  movePending,
+  onMove,
 }: {
   projectId: string;
   shot: PlanShot;
   instruction: string;
   onInstructionChange: (text: string) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  movePending: boolean;
+  onMove: (direction: "up" | "down") => void;
 }) {
   const queryClient = useQueryClient();
   const toggleLock = useMutation({
@@ -332,7 +361,27 @@ function ShotCard({
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-slate-700 bg-surface/60 p-3">
       <div className="flex items-center justify-between text-xs">
-        <span className="font-semibold text-slate-200">
+        <span className="flex items-center gap-1 font-semibold text-slate-200">
+          <span className="flex flex-col">
+            <button
+              type="button"
+              title="Yukarı taşı"
+              onClick={() => onMove("up")}
+              disabled={!canMoveUp || movePending}
+              className="leading-none text-slate-500 hover:text-accent disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              title="Aşağı taşı"
+              onClick={() => onMove("down")}
+              disabled={!canMoveDown || movePending}
+              className="leading-none text-slate-500 hover:text-accent disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              ▼
+            </button>
+          </span>
           Sahne {shot.order_index + 1} — {SOURCE_TYPE_LABEL[shot.source_type]}
         </span>
         <span className="text-slate-500">{(shot.target_frames / FRAMES_PER_SECOND).toFixed(1)} sn</span>

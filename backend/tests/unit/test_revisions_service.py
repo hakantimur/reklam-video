@@ -461,3 +461,47 @@ def test_set_shot_caption_unknown_shot_is_404(db_session):
 
     with pytest.raises(NotFoundError):
         revisions_service.set_shot_caption(db_session, project.id, "does-not-exist", "x")
+
+
+def test_reorder_shots_updates_order_index_in_place(db_session):
+    project, revision, shots = _setup_base_revision(
+        db_session,
+        shot_kwargs_list=[
+            {"source_type": "ai_generated", "purpose": "Hook", "target_frames": 90},
+            {"source_type": "gameplay", "purpose": "Play", "target_frames": 90},
+            {"source_type": "composed", "purpose": "CTA", "target_frames": 90},
+        ],
+    )
+    hook, play, cta = shots
+    new_order = [cta.id, hook.id, play.id]
+
+    reordered = revisions_service.reorder_shots(db_session, project.id, revision.id, new_order)
+
+    assert [s.id for s in reordered] == new_order
+    assert [s.order_index for s in reordered] == [0, 1, 2]
+
+    from app.services import plans as plans_service
+
+    persisted = plans_service.get_shots_for_revision(db_session, revision.id)
+    assert [s.id for s in persisted] == new_order  # ordered by order_index
+
+
+def test_reorder_shots_rejects_a_non_permutation(db_session):
+    project, revision, shots = _setup_base_revision(
+        db_session,
+        shot_kwargs_list=[
+            {"source_type": "ai_generated", "purpose": "Hook", "target_frames": 90},
+            {"source_type": "composed", "purpose": "CTA", "target_frames": 90},
+        ],
+    )
+
+    with pytest.raises(ValidationAppError):
+        # missing the CTA shot, includes a made-up id instead
+        revisions_service.reorder_shots(db_session, project.id, revision.id, [shots[0].id, "does-not-exist"])
+
+
+def test_reorder_shots_unknown_revision_is_404(db_session):
+    project = projects_service.create_project(db_session, name="Siralama Testi Projesi")
+
+    with pytest.raises(NotFoundError):
+        revisions_service.reorder_shots(db_session, project.id, "does-not-exist", ["a", "b"])
