@@ -85,6 +85,28 @@ export interface Concept {
   selected: boolean;
 }
 
+// --- plan (spec §10.2 Script+ShotPlan, §8.1 POST/GET /projects/{id}/plan) ---
+
+export interface PlanShot {
+  id: string;
+  order_index: number;
+  source_type: "gameplay" | "ai_generated" | "composed";
+  purpose: string;
+  desired_event: string | null;
+  target_frames: number;
+  caption_text: string | null;
+  voice_text: string | null;
+  locks: Record<string, boolean>;
+}
+
+export interface Revision {
+  id: string;
+  sequence_no: number;
+  status: string;
+  change_summary: string | null;
+  shots: PlanShot[];
+}
+
 // --- settings / credentials (spec §8.1 PUT /settings/credentials/{provider}) ---
 
 export type CredentialProvider = "openrouter" | "elevenlabs";

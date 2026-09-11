@@ -3,7 +3,8 @@ import json
 import httpx
 import pytest
 
-from app.agents.director import DirectorGenerationError, generate_concepts
+from app.agents.director import DirectorGenerationError, generate_concepts, generate_shot_plan
+from app.models.creative import Concept
 from app.models.project import BrandProfile, Brief
 from app.providers.openrouter import OpenRouterClient, OpenRouterTextVisionProvider
 
@@ -104,3 +105,50 @@ def test_missing_game_profile_is_marked_unavailable_not_omitted():
     user_message = captured["body"]["messages"][1]["content"]
     assert "UNAVAILABLE" in user_message
     assert "Do not invent specific gameplay" in user_message
+
+
+def _concept() -> Concept:
+    return Concept(
+        id="concept-1", brief_id="brief-1", angle="Meydan okuma", hook="h", rationale="r",
+        claim_refs_json=[], selected=True,
+    )
+
+
+_VALID_SHOT_PLAN_PAYLOAD = {
+    "schema_version": 1,
+    "fps": {"num": 30, "den": 1},
+    "target_frames": 600,
+    "shots": [
+        {
+            "id": "shot_1",
+            "source_type": "gameplay",
+            "purpose": "Ana mekanigi goster",
+            "target_frames": 600,
+            "handles_frames": {"before": 15, "after": 15},
+            "start_state": {},
+            "desired_event": None,
+            "success_predicate": {"required_observations": ["ok"], "evidence_required": True},
+            "action_constraints": {"max_attempts": 3, "max_seconds": 30},
+            "caption": "Basla",
+            "voice_text": None,
+            "fallback": "Oyun kesfi gerekli",
+            "locks": {"visual": False, "voice": False, "caption": False, "timing": False},
+        }
+    ],
+}
+
+
+def test_generate_shot_plan_returns_validated_plan():
+    provider = _provider_with_response(_VALID_SHOT_PLAN_PAYLOAD)
+    plan = generate_shot_plan(provider, "test/model", brief=_brief(), brand=_brand(), concept=_concept())
+    assert plan.target_frames == 600
+    assert len(plan.shots) == 1
+    assert plan.shots[0].fallback == "Oyun kesfi gerekli"
+
+
+def test_generate_shot_plan_rejects_frame_mismatch():
+    bad_payload = json.loads(json.dumps(_VALID_SHOT_PLAN_PAYLOAD))
+    bad_payload["shots"][0]["target_frames"] = 100  # far off from target_frames=600
+    provider = _provider_with_response(bad_payload)
+    with pytest.raises(DirectorGenerationError):
+        generate_shot_plan(provider, "test/model", brief=_brief(), brand=_brand(), concept=_concept())

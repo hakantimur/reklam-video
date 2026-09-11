@@ -5,12 +5,32 @@ import { EmptyState } from "../components/common/EmptyState";
 import { ErrorBanner } from "../components/common/ErrorBanner";
 import { LoadingState } from "../components/common/LoadingState";
 
+const FRAMES_PER_SECOND = 30;
+
+const SOURCE_TYPE_LABEL: Record<string, string> = {
+  gameplay: "Gerçek oynanış",
+  ai_generated: "AI üretimi",
+  composed: "Grafik kompozisyon",
+};
+
 export function ConceptsStep({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
 
   const conceptsQuery = useQuery({
     queryKey: ["concepts", projectId],
     queryFn: () => api.listConcepts(projectId),
+  });
+
+  const planQuery = useQuery({
+    queryKey: ["plan", projectId],
+    queryFn: () => api.getPlan(projectId),
+  });
+
+  const generatePlan = useMutation({
+    mutationFn: (conceptId: string) => api.generatePlan(projectId, conceptId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["plan", projectId] });
+    },
   });
 
   const generate = useMutation({
@@ -113,6 +133,77 @@ export function ConceptsStep({ projectId }: { projectId: string }) {
           ))}
         </div>
       ) : null}
+
+      {(() => {
+        const selectedConcept = concepts.find((c) => c.selected);
+        if (!selectedConcept) return null;
+        return (
+          <div className="mt-2 flex flex-col gap-4 border-t border-slate-800 pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-100">Çekim planı</h2>
+                <p className="text-sm text-slate-400">
+                  Seçili fikirden ("{selectedConcept.angle}") sahne sahne bir çekim planı üretir.
+                  Oyun keşfi henüz yapılmadığından gerçek oynanış sahneleri genel amaçlarla
+                  planlanır; gerçek çekim sırası ve olay tespiti sonraki bir safhada eklenecek.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => generatePlan.mutate(selectedConcept.id)}
+                disabled={generatePlan.isPending}
+                className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {generatePlan.isPending
+                  ? "Üretiliyor…"
+                  : planQuery.data
+                    ? "Yeniden üret"
+                    : "Çekim planı oluştur"}
+              </button>
+            </div>
+
+            {generatePlan.isError ? (
+              <ErrorBanner
+                title="Çekim planı üretilemedi"
+                message={describeApiError(generatePlan.error)}
+                onRetry={() => generatePlan.reset()}
+              />
+            ) : null}
+
+            {planQuery.isLoading ? <LoadingState label="Çekim planı yükleniyor…" /> : null}
+
+            {planQuery.data ? (
+              <div className="flex flex-col gap-2">
+                {planQuery.data.shots.map((shot) => (
+                  <div
+                    key={shot.id}
+                    className="flex flex-col gap-1 rounded-lg border border-slate-700 bg-surface/60 p-3"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-200">
+                        Sahne {shot.order_index + 1} — {SOURCE_TYPE_LABEL[shot.source_type]}
+                      </span>
+                      <span className="text-slate-500">
+                        {(shot.target_frames / FRAMES_PER_SECOND).toFixed(1)} sn
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-300">{shot.purpose}</p>
+                    {shot.desired_event ? (
+                      <p className="text-xs text-slate-500">Beklenen olay: {shot.desired_event}</p>
+                    ) : null}
+                    {shot.caption_text ? (
+                      <p className="text-xs text-slate-400">Ekran yazısı: “{shot.caption_text}”</p>
+                    ) : null}
+                    {shot.voice_text ? (
+                      <p className="text-xs text-slate-400">Seslendirme: “{shot.voice_text}”</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        );
+      })()}
     </div>
   );
 }

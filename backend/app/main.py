@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import ROUTERS as CORE_ROUTERS
@@ -22,10 +23,21 @@ def create_app() -> FastAPI:
         app.include_router(router, prefix="/api/v1")
 
     # Spec 20.2: the built UI is served by FastAPI in normal use; a Vite dev
-    # server is only needed while actively developing the frontend. Mounted
-    # last and only if a build exists, so /api/v1/* always takes priority.
+    # server is only needed while actively developing the frontend. Registered
+    # last so /api/v1/* always takes priority. A plain StaticFiles(html=True)
+    # mount only serves index.html for "/" itself, not for client-side routes
+    # like /studyo/senaryo — those need an explicit SPA fallback, otherwise a
+    # bookmark or refresh on any sub-route 404s instead of loading the app.
     if _WEB_DIST.is_dir():
-        app.mount("/", StaticFiles(directory=_WEB_DIST, html=True), name="web")
+        index_path = _WEB_DIST / "index.html"
+        app.mount("/assets", StaticFiles(directory=_WEB_DIST / "assets"), name="web-assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        def serve_spa(full_path: str) -> FileResponse:
+            candidate = _WEB_DIST / full_path
+            if full_path and candidate.is_file():
+                return FileResponse(candidate)
+            return FileResponse(index_path)
 
     return app
 

@@ -4,6 +4,7 @@ import type {
   BriefResponse,
   Concept,
   CreateProjectPayload,
+  Revision,
   CredentialPayload,
   CredentialProvider,
   CredentialResponse,
@@ -196,6 +197,14 @@ export const api = {
 
   selectConcept: (projectId: string, conceptId: string) =>
     request<Concept>(`/projects/${projectId}/concepts/${conceptId}/select`, { method: "POST" }),
+
+  generatePlan: (projectId: string, conceptId: string, model?: string) =>
+    request<Revision>(`/projects/${projectId}/plan`, {
+      method: "POST",
+      body: JSON.stringify(model ? { concept_id: conceptId, model } : { concept_id: conceptId }),
+    }),
+
+  getPlan: (projectId: string) => request<Revision | null>(`/projects/${projectId}/plan`),
 };
 
 /** Bir hatayı kullanıcıya gösterilecek tek satırlık Türkçe metne çevirir. */
