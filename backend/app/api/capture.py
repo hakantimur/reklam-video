@@ -1,11 +1,15 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Header
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
+from app.api.errors import error_response
 from app.core.db import get_session
 from app.jobs.queue import job_queue
+from app.services import takes as takes_service
+from app.services.errors import ServiceError
 
 router = APIRouter(tags=["capture"])
 
@@ -44,3 +48,41 @@ def start_capture(
         payload=payload,
     )
     return CaptureJobOut(job_id=job.id, state=job.state)
+
+
+class TakeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    shot_id: str
+    asset_id: str
+    attempt: int
+    status: str
+    rejection_reason: str | None
+    quality_json: dict
+    created_at: datetime
+
+
+class ShotTakeOut(BaseModel):
+    shot_id: str
+    selected_take_id: str | None
+
+
+@router.get("/projects/{project_id}/shots/{shot_id}/takes", response_model=list[TakeOut])
+def list_takes(project_id: str, shot_id: str, session: Session = Depends(get_session)):
+    try:
+        takes = takes_service.list_takes_for_shot(session, project_id, shot_id)
+    except ServiceError as exc:
+        return error_response(exc)
+    return [TakeOut.model_validate(t) for t in takes]
+
+
+@router.post(
+    "/projects/{project_id}/shots/{shot_id}/takes/{take_id}/select", response_model=ShotTakeOut
+)
+def select_take(project_id: str, shot_id: str, take_id: str, session: Session = Depends(get_session)):
+    try:
+        shot = takes_service.select_take(session, project_id, shot_id, take_id)
+    except ServiceError as exc:
+        return error_response(exc)
+    return ShotTakeOut(shot_id=shot.id, selected_take_id=shot.selected_take_id)

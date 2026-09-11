@@ -150,6 +150,21 @@ Ayrıca doğrulanan davranışlar:
 `pytest -q`: 149 passed, 11 deselected (6 yeni servis testi +
 `test_capture_service.py`, 2 yeni API testi `test_capture_api.py`).
 
+**Takes listesi/seçimi + Stüdyo "Çekim" ekranı, gerçek tarayıcıda uçtan uca
+CANLI doğrulandı** (aynı gün, ikinci tur):
+
+1. `GET/POST /projects/{id}/shots/{shot_id}/takes[/…/select]` eklendi
+   (`app/services/takes.py`, 4 yeni test — `test_takes_api.py`) → 153 passed.
+2. `apps/web`'e gerçek bir "Çekim" adımı eklendi (cihaz seçici, sahne başına
+   çek/yeniden çek, take listesi + `<video>` önizleme, seçim düğmesi).
+3. Gerçek backend + gerçek derlenmiş build üzerinden tarayıcıda: cihaz
+   seçildi, "Çek" tıklandı → gerçek bir `capture_shot` job'u kuyruğa girdi,
+   `Get-Process scrcpy` ile gerçek kayıt süreci doğrulandı, iş bitince UI
+   otomatik "Deneme 1 — İncelemede" + video önizlemesini gösterdi (ikinci
+   gameplay sahnesi için de canlı çekildi). "Bu çekimi seç" tıklandı →
+   doğrudan SQLite sorgusuyla `shots.selected_take_id`'nin gerçekten
+   güncellendiği doğrulandı.
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

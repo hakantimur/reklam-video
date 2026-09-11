@@ -133,6 +133,24 @@ export interface Revision {
   shots: PlanShot[];
 }
 
+// --- capture / takes (spec §11, §7.2 "takes" tablosu, §8.1 Safha 7) -----
+
+export interface CaptureJob {
+  job_id: string;
+  state: string;
+}
+
+export interface Take {
+  id: string;
+  shot_id: string;
+  asset_id: string;
+  attempt: number;
+  status: "pending" | "accepted" | "rejected" | "uncertain";
+  rejection_reason: string | null;
+  quality_json: Record<string, unknown>;
+  created_at: string;
+}
+
 // --- settings / credentials (spec §8.1 PUT /settings/credentials/{provider}) ---
 
 export type CredentialProvider = "openrouter" | "elevenlabs";

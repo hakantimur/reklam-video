@@ -46,15 +46,13 @@ liste boşalana kadar kullanılmaz.
    sunulmuyor; kayıt başlatma/durdurma tamamen `CaptureManager` tarafında,
    operatörün haberi olmadan yönetiliyor. Çalışıyor ve canlı doğrulandı, ama
    spec'in tam eylem setine göre daraltılmış.
-2. **Stüdyo arayüzünde "Çekim" adımı henüz yok.** Backend API
-   (`POST /projects/{id}/shots/{shot_id}/capture`) ve arka plan job'u tam
-   çalışır durumda ve canlı doğrulandı, ama `apps/web`'de bunu tetikleyip
-   ilerlemeyi izleyecek bir ekran henüz eklenmedi — şu an yalnızca doğrudan
-   API çağrısıyla kullanılabilir.
-3. **Birden fazla take arasından seçim / retake UI'ı yok.** `attempt` sayacı
-   ve `Take.status` (`pending`/`rejected`/`uncertain`) doğru işleniyor, ama
-   bunları karşılaştırıp birini `selected_take_id` yapacak bir ekran veya uç
-   nokta bu turda kapsam dışı.
+2. ~~Stüdyo arayüzünde "Çekim" adımı yok~~ — **çözüldü (2026-09-11, aynı
+   gün ikinci tur)**: `apps/web`'e gerçek bir Çekim ekranı eklendi (cihaz
+   seçimi, sahne başına çek/yeniden çek, take listesi + video önizleme,
+   "Bu çekimi seç") ve gerçek tarayıcıda uçtan uca CANLI doğrulandı.
+3. **Reddedilmiş bir take'i geri getirme/arşivden çıkarma UI'ı yok** —
+   `status="rejected"` bir take listede görünür ve seçilemez durumda
+   kalır, ama onu silme veya "yine de kullan" gibi bir eylem yok.
 4. **Olay tabanlı otomatik in/out kırpma yok.** Her take'in tamamı
    (`in_us=0`, `out_us=süre`) saklanıyor; `success_predicate`'e göre gerçek
    olay anını video içinde bulup kırpmak (spec §11.6/12.x) ayrı bir iş.

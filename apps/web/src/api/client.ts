@@ -2,12 +2,14 @@ import type {
   ApiErrorBody,
   BriefPayload,
   BriefResponse,
+  CaptureJob,
   Concept,
   CreateProjectPayload,
   DeviceSummary,
   DiscoverJob,
   Job,
   Revision,
+  Take,
   CredentialPayload,
   CredentialProvider,
   CredentialResponse,
@@ -220,6 +222,23 @@ export const api = {
     }),
 
   getJob: (jobId: string) => request<Job>(`/jobs/${jobId}`),
+
+  startCapture: (projectId: string, shotId: string, serial: string) =>
+    request<CaptureJob>(`/projects/${projectId}/shots/${shotId}/capture`, {
+      method: "POST",
+      body: JSON.stringify({ serial }),
+    }),
+
+  listTakes: (projectId: string, shotId: string) =>
+    request<Take[]>(`/projects/${projectId}/shots/${shotId}/takes`),
+
+  selectTake: (projectId: string, shotId: string, takeId: string) =>
+    request<{ shot_id: string; selected_take_id: string | null }>(
+      `/projects/${projectId}/shots/${shotId}/takes/${takeId}/select`,
+      { method: "POST" },
+    ),
+
+  assetContentUrl: (assetId: string) => `${API_BASE_URL}/assets/${assetId}/content`,
 };
 
 /** Bir hatayı kullanıcıya gösterilecek tek satırlık Türkçe metne çevirir. */

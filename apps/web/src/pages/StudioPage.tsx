@@ -7,6 +7,7 @@ import { ErrorBanner } from "../components/common/ErrorBanner";
 import { LoadingState } from "../components/common/LoadingState";
 import { useUIStore } from "../state/uiStore";
 import { BriefForm } from "./BriefForm";
+import { CaptureStep } from "./CaptureStep";
 import { ConceptsStep } from "./ConceptsStep";
 import { DiscoveryStep } from "./DiscoveryStep";
 
@@ -17,16 +18,14 @@ interface StepDef {
 }
 
 // Spec §5.1: "Stüdyo adımları: Brief → Keşif → Senaryo → Çekim → Taslak → Düzenle → Çıktı."
-// Brief ve Senaryo (fikir üretme) işlevsel; diğerleri sonraki safhalarda
-// eklenecek (bkz. docs/PROGRESS.md). Keşif henüz yok — Senaryo bu yüzden
-// oyun keşfi olmadan, yalnızca brief'ten fikir üretir ve bunu açıkça belirtir.
-// Devre dışı adımlar tıklanabilir sahte buton olarak değil, açık "henüz yok"
-// durumuyla gösteriliyor.
+// Brief, Keşif, Senaryo ve Çekim işlevsel; kalanlar sonraki safhalarda
+// eklenecek (bkz. docs/PROGRESS.md). Devre dışı adımlar tıklanabilir sahte
+// buton olarak değil, açık "henüz yok" durumuyla gösteriliyor.
 const STEPS: StepDef[] = [
   { key: "brief", label: "Brief", enabled: true },
   { key: "kesif", label: "Keşif", enabled: true },
   { key: "senaryo", label: "Senaryo", enabled: true },
-  { key: "cekim", label: "Çekim", enabled: false },
+  { key: "cekim", label: "Çekim", enabled: true },
   { key: "taslak", label: "Taslak", enabled: false },
   { key: "duzenle", label: "Düzenle", enabled: false },
   { key: "cikti", label: "Çıktı", enabled: false },
@@ -65,6 +64,7 @@ export function StudioPage() {
           <Route path="brief" element={<BriefStep projectId={activeProjectId} />} />
           <Route path="kesif" element={<DiscoveryStep projectId={activeProjectId} />} />
           <Route path="senaryo" element={<ConceptsStep projectId={activeProjectId} />} />
+          <Route path="cekim" element={<CaptureStep projectId={activeProjectId} />} />
           <Route path="*" element={<Navigate to="brief" replace />} />
         </Routes>
       )}
