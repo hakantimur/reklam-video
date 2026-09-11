@@ -208,6 +208,35 @@ liste boşalana kadar kullanılmaz.
    Temiz bir ikinci Windows makinesinde `SETUP.bat`'tan itibaren tüm
    akışın çalıştığı bu oturumda ayrıca doğrulanmadı.
 
+## Şemada var, hiçbir yerde kullanılmayan tablolar (2026-09-11, sekizinci tur — envanter)
+
+Kod tabanı sistematik olarak taranarak her model için gerçek bir
+servis/API/job referansı olup olmadığı kontrol edildi. Üç tablo şemada
+(ve muhtemelen migration'da) var ama uygulamanın hiçbir yerinde
+okunmuyor/yazılmıyor — bunlar gizli bir hata değil, henüz inşa
+edilmemiş spec özelliklerinin şema iskeleti:
+
+1. **`character_profiles`** (`app/models/creative.py::CharacterProfile`)
+   — spec §9.4/Safha 8'in "insanlı sahneler aynı karakter referansını
+   kullanır" gereksinimine karşılık geliyor (wardrobe, location,
+   voice_profile_id, reference_asset_ids_json, continuity_notes).
+   `Shot.character_id` alanı da var ama hiçbir yerde set edilmiyor/
+   okunmuyor. Synova'nın gerçek reklamları insan aktör içermediği
+   (oynanış + AI b-roll) için bu turda gerçek bir test senaryosu yoktu;
+   inşa etmek "gerçek model testi yoksa bu safha canlı doğrulaması
+   tamamlandı sayılmaz" ilkesini ihlal ederdi — bu yüzden bilinçli
+   olarak yapılmadı.
+2. **`asset_rights`** (`AssetRights` — source_name, source_url,
+   license_note, user_provided) — kullanıcı tarafından yüklenen
+   varlıkların (stok görüntü vb.) telif/kaynak bilgisini tutmak için;
+   uygulamada henüz bir "varlık yükle" akışı olmadığı için (tüm
+   varlıklar ya gerçek çekim ya da AI üretimi) kullanılmıyor.
+3. **`performance_notes`** (`PerformanceNote` — impressions, views,
+   clicks, installs, spend) — export sonrası gerçek reklam performansını
+   kaydetmek için; bunun gerçek anlamı olması için bir reklam platformu
+   entegrasyonu (Meta/Google Ads API vb.) gerekir, bu oturumda hiç
+   kapsam dahilinde değildi.
+
 ## Frontend (apps/web) — Safha 1 UI iskeleti (2026-09-11, agent/frontend-web)
 
 1. **Backend'in çoğu uç noktası henüz yok.** `backend/app/main.py` şu an
