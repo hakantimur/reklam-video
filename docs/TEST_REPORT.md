@@ -283,6 +283,33 @@ kare toplamıyla uyuşmayan plan — hepsi export'a hiç ulaşmadan reddediliyor
 `pytest -q`: 188 passed, 11 deselected (10 yeni test:
 `test_qa_service.py`, `test_export_service.py`, `test_qa_export_api.py`).
 
+## Safha 12 — final regresyon (2026-09-11, oturum sonu)
+
+Tüm gece boyunca eklenen Safha 5-11 kodunun tek bir tutarlı `main` HEAD
+üzerinde birlikte çalıştığını doğrulamak için tam bir regresyon yapıldı:
+
+```
+backend: pytest -q              -> 188 passed, 11 deselected
+apps/web: npm run build         -> basarili, TypeScript strict hatasiz
+apps/render: npm run build      -> basarili (tsc --noEmit), hatasiz
+Soguk backend yeniden baslatma + GET /health + GET / (SPA)  -> ikisi de basarili
+```
+
+Bu geçişte fark edilip düzeltilen gerçek hata: `GET /health`'in
+`worker.status` alanı, arka plan job worker'ı gerçekten çalışırken bile
+her zaman sabit `"not_started"` döndürüyordu (`app/jobs/worker.py`'a
+gerçek durumu döndüren `is_running()` eklendi, `app/api/health.py` buna
+bağlandı). Bu gece boyunca worker'ın onlarca gerçek job'u (discover,
+capture_shot, generate_ai_scene, generate_voice, render_preview,
+export_final) başarıyla işlediği zaten doğrudan job durumu sorgularıyla
+kanıtlanmıştı — yalnızca health endpoint'i bunu yanlış raporluyordu.
+
+`SETUP.bat`/`START.bat`/`STOP.bat` bu oturumda defalarca gerçekten
+çalıştırıldı (her kod değişikliğinden sonra backend'i yeniden başlatmak
+için) — kaynak koddan gerçek bir Windows kurulumunun çalıştığı tekrar
+tekrar kanıtlandı. Bağımsız/önkoşulsuz bir installer paketi bu oturumda
+üretilmedi (bkz. KNOWN_LIMITATIONS.md).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

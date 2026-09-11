@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_session
 from app.core.diagnostics import run_diagnostics
+from app.jobs.worker import is_running as worker_is_running
 
 router = APIRouter(tags=["health"])
 
@@ -23,7 +24,7 @@ def health(session: Session = Depends(get_session)) -> dict:
         "status": "ok" if db_ok else "degraded",
         "db": {"ok": db_ok, "error": db_error},
         "disk": diagnostics["disk"],
-        "worker": {"status": "not_started"},
+        "worker": {"status": "running" if worker_is_running() else "not_started"},
     }
 
 

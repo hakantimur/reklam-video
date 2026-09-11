@@ -51,3 +51,7 @@ def stop_background_worker() -> None:
     global _started
     _stop_event.set()
     _started = False
+
+
+def is_running() -> bool:
+    return _started

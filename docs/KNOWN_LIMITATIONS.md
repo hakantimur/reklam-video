@@ -138,6 +138,22 @@ liste boşalana kadar kullanılmaz.
    (`render_timeline_to_asset`) — export'a özgü ekstra bir doğrulama
    (ör. gerçek yerleşim format kontrolü) eklenmedi, yalnızca QA kapısı var.
 
+## Safha 12 — Windows paketleme (2026-09-11)
+
+1. **Bağımsız/tek-tıkla kurulan bir installer yok.** Kullanıcı hâlâ
+   Python 3.11+, Node.js ve (canlı cihaz özellikleri için) Android SDK
+   platform-tools'u kendisi kurmalı; `SETUP.bat` bunların üzerine gerçek
+   bir kurulum yapıyor (venv, pip install, alembic migrate, ffmpeg/scrcpy
+   indirme, npm install/build) ama bunları bir Python/Node çalışma
+   zamanını da içeren tek bir `.exe`/`.msi` içine paketlemiyor.
+2. **Kod imzalama yok.** Üretilecek herhangi bir installer/exe Windows
+   SmartScreen tarafından "tanınmayan yayıncı" olarak işaretlenir.
+3. **Otomatik güncelleme yok.** Yeni bir sürüm almak, `git pull` +
+   `SETUP.bat`'ı tekrar çalıştırmak anlamına geliyor.
+4. **Bu regresyon tek makinede (geliştirme makinesi) çalıştırıldı.**
+   Temiz bir ikinci Windows makinesinde `SETUP.bat`'tan itibaren tüm
+   akışın çalıştığı bu oturumda ayrıca doğrulanmadı.
+
 ## Frontend (apps/web) — Safha 1 UI iskeleti (2026-09-11, agent/frontend-web)
 
 1. **Backend'in çoğu uç noktası henüz yok.** `backend/app/main.py` şu an
