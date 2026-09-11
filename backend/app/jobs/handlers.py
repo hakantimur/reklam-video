@@ -69,6 +69,8 @@ def _discover(session: Session, job: Job) -> dict:
     finally:
         client.close()
 
+    _settle_llm_cost(session, job, cost_usd=provider.total_cost_usd)
+
     return {
         "game_profile_id": game_profile.id,
         "mechanic_summary": game_profile.mechanic_summary,
@@ -106,6 +108,8 @@ def _capture_shot(session: Session, job: Job) -> dict:
     finally:
         client.close()
 
+    _settle_llm_cost(session, job, cost_usd=provider.total_cost_usd)
+
     return {
         "take_id": take.id,
         "asset_id": take.asset_id,
@@ -130,11 +134,12 @@ def _generate_ai_scene(session: Session, job: Job) -> dict:
 
     client = OpenRouterClient(api_key=api_key)
     try:
+        text_provider = OpenRouterTextVisionProvider(client)
         take = generation_service.generate_ai_scene_take(
             session,
             job.project_id,
             payload["shot_id"],
-            text_provider=OpenRouterTextVisionProvider(client),
+            text_provider=text_provider,
             text_model=payload.get("text_model", "anthropic/claude-haiku-4.5"),
             video_provider=OpenRouterVideoProvider(client),
             video_model=payload["video_model"],
@@ -144,31 +149,50 @@ def _generate_ai_scene(session: Session, job: Job) -> dict:
     finally:
         client.close()
 
-    _settle_real_cost(session, job, asset_id=take.asset_id)
+    _settle_generation_cost(session, job, asset_id=take.asset_id, text_provider=text_provider)
 
     return {"take_id": take.id, "asset_id": take.asset_id, "status": take.status, "attempt": take.attempt}
 
 
-def _settle_real_cost(session: Session, job: Job, *, asset_id: str) -> None:
-    """Best-effort: record the video provider's own confirmed spend
-    (`Asset.metadata_json.provider.actual_cost_usd`, from OpenRouter's
-    `usage.cost` — never an estimate) as a `BudgetEntry` settlement.
-    Deliberately never lets a bookkeeping failure fail an otherwise
-    successful generation job — this is real spend tracking, not a gate."""
+def _settle_llm_cost(session: Session, job: Job, *, cost_usd: float) -> None:
+    """Best-effort: record an OpenRouter text/vision provider's own
+    confirmed spend (`provider.total_cost_usd`, accumulated from
+    `usage.cost` on every `generate_structured` call the job made — never
+    an estimate) as a `BudgetEntry` settlement. Deliberately never lets a
+    bookkeeping failure fail an otherwise successful job — this is real
+    spend tracking, not a gate."""
 
-    from app.models.asset import Asset
     from app.services import budget as budget_service
 
     try:
-        asset = session.get(Asset, asset_id)
-        if asset is None:
-            return
-        cost_usd = (asset.metadata_json or {}).get("provider", {}).get("actual_cost_usd")
         if not cost_usd:
             return
         budget_service.settle(
             session, job.project_id, job_id=job.id, actual_amount_microusd=round(cost_usd * 1_000_000)
         )
+    except Exception:  # noqa: BLE001 - spend bookkeeping must never fail a real, already-succeeded job
+        logging.getLogger(__name__).exception("Failed to settle real cost for job %s", job.id)
+
+
+def _settle_generation_cost(
+    session: Session, job: Job, *, asset_id: str, text_provider: "OpenRouterTextVisionProvider"
+) -> None:
+    """Like `_settle_llm_cost`, but for `generate_ai_scene`: that job spends
+    on both the video provider (recorded on the resulting Asset, spec'd
+    separately from chat completions) and the text provider (the scene
+    prompt-generation call). `budget.settle` allows only one settlement per
+    job, so both real costs are summed into a single entry rather than the
+    second call silently failing against the first."""
+
+    from app.models.asset import Asset
+
+    try:
+        asset = session.get(Asset, asset_id)
+        video_cost_usd = (
+            (asset.metadata_json or {}).get("provider", {}).get("actual_cost_usd") if asset else None
+        ) or 0.0
+        total_usd = video_cost_usd + (text_provider.total_cost_usd or 0.0)
+        _settle_llm_cost(session, job, cost_usd=total_usd)
     except Exception:  # noqa: BLE001 - spend bookkeeping must never fail a real, already-succeeded job
         logging.getLogger(__name__).exception("Failed to settle real cost for job %s", job.id)
 
@@ -239,15 +263,18 @@ def _review_take(session: Session, job: Job) -> dict:
 
     client = OpenRouterClient(api_key=api_key)
     try:
+        provider = OpenRouterTextVisionProvider(client)
         report = review_service.review_shot_take(
             session,
             job.project_id,
             payload["shot_id"],
-            provider=OpenRouterTextVisionProvider(client),
+            provider=provider,
             model=payload.get("model", "anthropic/claude-haiku-4.5"),
         )
     finally:
         client.close()
+
+    _settle_llm_cost(session, job, cost_usd=provider.total_cost_usd)
 
     return {
         "report_id": report.id,

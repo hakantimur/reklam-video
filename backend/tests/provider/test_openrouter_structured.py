@@ -63,6 +63,39 @@ def test_generate_structured_sends_json_schema_response_format_and_parses_conten
     ]
 
 
+def test_generate_structured_accumulates_real_usage_cost_across_calls():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "id": "gen-1",
+                "choices": [{"message": {"role": "assistant", "content": json.dumps({"answer": 1})}}],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "cost": 3.5e-05},
+            },
+        )
+
+    provider = _provider(handler)
+    schema = {"title": "t", "type": "object", "properties": {"answer": {"type": "number"}}}
+
+    assert provider.total_cost_usd == 0.0
+    provider.generate_structured("m", [ChatMessage("user", "hi")], schema)
+    assert provider.total_cost_usd == pytest.approx(3.5e-05)
+    provider.generate_structured("m", [ChatMessage("user", "hi again")], schema)
+    assert provider.total_cost_usd == pytest.approx(7.0e-05)
+
+
+def test_generate_structured_leaves_cost_at_zero_when_usage_is_absent():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"id": "gen-1", "choices": [{"message": {"role": "assistant", "content": "{}"}}]},
+        )
+
+    provider = _provider(handler)
+    provider.generate_structured("m", [ChatMessage("user", "hi")], {"type": "object"})
+    assert provider.total_cost_usd == 0.0
+
+
 def test_generate_structured_raises_on_error_status():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(401, json={"error": {"code": 401, "message": "Missing Authentication header"}})

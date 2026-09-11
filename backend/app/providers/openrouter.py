@@ -167,10 +167,18 @@ class OpenRouterClient:
 
 
 class OpenRouterTextVisionProvider:
-    """`TextVisionProvider` backed by OpenRouter `/models` + `/chat/completions`."""
+    """`TextVisionProvider` backed by OpenRouter `/models` + `/chat/completions`.
+
+    `total_cost_usd` accumulates OpenRouter's own `usage.cost` (confirmed,
+    never estimated) across every `generate_structured` call made through
+    this instance — callers that loop several completions through one
+    instance (the operator agent's per-action decisions, a director retry)
+    get the real total for the whole run, not just the last call.
+    """
 
     def __init__(self, client: OpenRouterClient | None = None) -> None:
         self._client = client or OpenRouterClient()
+        self.total_cost_usd: float = 0.0
 
     def list_models(self) -> list[ProviderModel]:
         response = self._client.get("/models")
@@ -214,6 +222,9 @@ class OpenRouterTextVisionProvider:
                 f"OpenRouter chat completion failed: {response.status_code} {response.text}"
             )
         payload = response.json()
+        cost = (payload.get("usage") or {}).get("cost")
+        if cost:
+            self.total_cost_usd += cost
         content = payload["choices"][0]["message"]["content"]
         return json.loads(content)
 

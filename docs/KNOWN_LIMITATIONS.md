@@ -237,11 +237,39 @@ liste boşalana kadar kullanılmaz.
    kendi onayladığı gerçek harcama) okuyup hem Asset metadata'sına hem
    gerçek bir `BudgetEntry` (`entry_type=settlement, confidence=confirmed`)
    satırına yazıyor — CANLI doğrulandı (gerçek $0.32 harcama gerçek bir
-   satıra dönüştü). `discover`/`capture_shot`/`generate_voice`/
+   satıra dönüştü). ~~`discover`/`capture_shot`/`generate_voice`/
    `render_preview`/`export_final` hâlâ hiçbir maliyet kaydı yazmıyor —
    chat completion (yönetmen/operatör) çağrılarının gerçek maliyeti hâlâ
-   izlenmiyor, ElevenLabs TTS'in de kendi yanıtında kullanılabilir bir
-   maliyet alanı doğrulanmadı.
+   izlenmiyor~~ — **chat completion tarafı çözüldü (2026-09-11, beşinci
+   tur devamı)**: gerçek bir OpenRouter `/chat/completions` çağrısıyla
+   doğrulandı ki yanıt her zaman gerçek, sağlayıcı onaylı bir
+   `usage.cost` alanı taşıyor (aynı `usage.cost` sözleşmesi, video
+   poll'daki gibi). `OpenRouterTextVisionProvider` artık her
+   `generate_structured` çağrısının `usage.cost` değerini
+   `total_cost_usd`'de biriktiriyor (tek bir job içinde birden fazla LLM
+   çağrısı yapan operatör döngüsü/yönetmen retry'ı için doğru toplam);
+   `discover`, `capture_shot` ve `review_take` job'ları artık bu toplamı
+   gerçek bir `BudgetEntry` satırına yazıyor, `generate_ai_scene` ise
+   video maliyetiyle metin/prompt maliyetini tek bir satırda topluyor
+   (`settle()` job başına yalnızca bir kayda izin verdiği için). CANLI
+   doğrulandı: gerçek Synova projesinde bir `review_take` job'u koştu,
+   gerçek bir vision LLM çağrısı yaptı, ve tam olarak
+   `amount_microusd=5957` (`$0.005957`) değerinde gerçek bir
+   `settlement` satırı yazıldığı DB'den doğrudan okunarak teyit edildi.
+   `generate_ai_scene`'in birleşik (video+metin) yolu ayrı bir gerçek
+   API çağrısıyla değil, aynı mekanizmayı (`_settle_llm_cost`) kullandığı
+   ve toplama mantığı gerçek sayılarla birim testiyle doğrulandığı için
+   canlı olarak ayrıca denenmedi (bir video üretimi ~$0.12–0.32 arası
+   gerçek harcamaya yol açtığından gereksiz tekrar harcamadan kaçınıldı).
+   `generate_voice` (ElevenLabs) hâlâ maliyet yazmıyor — ElevenLabs'in
+   `POST /text-to-speech` yanıtı ham ses baytlarından ibaret, ne bir
+   `usage`/`cost` alanı ne de karakter sayısı döner; gerçek maliyet
+   kullanıcının hangi ElevenLabs abonelik katmanında olduğuna bağlı ve
+   bu bilgi API'den okunamıyor — bu yüzden uydurma bir fiyat tablosu
+   yazmak yerine bilinçli olarak izlenmeden bırakıldı. `render_preview`/
+   `export_final` yerel ffmpeg/Remotion çalıştırıyor, hiçbir ücretli API
+   çağrısı yapmıyor — bu ikisi için "maliyet kaydı yok" zaten doğru
+   davranış.
 4. **npm audit: 4 orta/yüksek risk uyarısı** (`react-router-dom` açık
    yönlendirme, `esbuild` dev-server isteği sızıntısı). İkisi de yalnızca
    majör sürüm atlamasıyla (`react-router-dom` 6→7, `vite` 5→8) düzeltiliyor;

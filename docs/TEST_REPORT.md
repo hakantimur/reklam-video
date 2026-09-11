@@ -478,6 +478,64 @@ gerekçenin göründüğü görsel olarak doğrulanamadı; yalnızca kod/tip
 düzeyinde (temiz derleme) ve backend'in gerçek HTTP kanıtıyla
 doğrulandı.
 
+## Gerçek LLM maliyet kaydı: chat completions (2026-09-11, beşinci tur devamı)
+
+Önceki turda yalnızca video üretiminin (`generate_ai_scene`'in Veo
+çağrısı) gerçek maliyeti izleniyordu. Bu turda önce gerçek bir OpenRouter
+`/chat/completions` çağrısı doğrudan (uygulama dışından) yapılarak
+yanıtın gerçekten `usage.cost` alanı taşıdığı doğrulandı:
+
+```
+POST https://openrouter.ai/api/v1/chat/completions (anthropic/claude-haiku-4.5)
+-> usage: {"prompt_tokens": 10, "completion_tokens": 5, "cost": 3.5e-05, ...}
+```
+
+Sonra:
+
+- `OpenRouterTextVisionProvider` her `generate_structured` çağrısından
+  sonra `usage.cost`'u `self.total_cost_usd`'ye ekliyor (aynı provider
+  örneği bir job içinde birden çok kez kullanılırsa — operatör
+  döngüsü, yönetmen retry'ı — doğru toplamı verir).
+- `discover`, `capture_shot`, `review_take` job handler'ları artık
+  `_settle_llm_cost(session, job, cost_usd=provider.total_cost_usd)`
+  çağırıyor.
+- `generate_ai_scene` artık `_settle_generation_cost` kullanıyor: Asset
+  metadata'sındaki gerçek video maliyetiyle `text_provider.total_cost_usd`'yi
+  (sahne prompt'u üretimi) tek bir `BudgetEntry` satırında topluyor —
+  `budget.settle()` job başına yalnızca bir settlement'a izin verdiği
+  için.
+
+**Canlı kanıt** (gerçek Synova projesi, montaj sahnesi `0a38e7fe-…`):
+1. `POST .../review` → job `d52c405a-…`.
+2. Job `succeeded`, gerçek bir vision LLM incelemesi yaptı (`outcome:
+   pass`).
+3. DB'den doğrudan okundu: `BudgetEntry(job_id="d52c405a-…",
+   entry_type="settlement", amount_microusd=5957, confidence="confirmed")`
+   — yani gerçek `$0.005957` harcama gerçek bir bütçe satırına döndü.
+
+`generate_ai_scene`'in birleşik (video+metin) toplama yolu ayrıca canlı
+denenmedi: bir video üretimi tek başına ~$0.12–0.32 gerçek harcamaya yol
+açıyor ve toplama mantığının kendisi (`video_cost + text_provider.
+total_cost_usd`) `test_settle_real_cost.py::
+test_settle_generation_cost_sums_video_and_text_cost` ile gerçek
+sayılarla birim testinde doğrulandı; aynı oturumda ayrıca tetiklenen
+gerçek bir `generate_ai_scene` job'u (CTA sahnesi) beklenen bir süre
+doğrulama hatasıyla (`target_frames` 2.5 sn'ye denk geliyor, Veo yalnızca
+[4,6,8] sn destekliyor) başarısız oldu — bu, bu turun değişikliğinden
+kaynaklanmayan, önceden de dokümante edilmiş bilinen bir davranış.
+
+`generate_voice` (ElevenLabs) hâlâ izlenmiyor: `POST
+/text-to-speech/{voice_id}` yanıtı ham `audio/mpeg` baytlarından ibaret,
+ne `usage` ne `cost` alanı taşıyor; gerçek maliyet kullanıcının
+ElevenLabs abonelik planına bağlı ve API'den okunamıyor — uydurma bir
+fiyat tablosu yazmak yerine bilinçli olarak boş bırakıldı.
+
+`pytest -q` (backend dizininden): **212 passed, 11 deselected** (6 yeni
+test: `test_settle_real_cost.py` tamamen yeniden yazıldı —
+`_settle_llm_cost`/`_settle_generation_cost` için 6 test; ayrıca
+`test_openrouter_structured.py`'ye `usage.cost` birikimi için 2 test
+eklendi).
+
 ## Canlı doğrulama engelleri (güncel)
 
 OpenRouter ve ElevenLabs API anahtarları bu oturumun başında Ayarlar
