@@ -829,3 +829,55 @@ güncelleme, permütasyon olmayan giriş reddi, bilinmeyen revizyon 404),
 `test_revisions_api.py` (2 test).
 
 `npm run build` temiz. `pytest -q`: **239 passed, 11 deselected**.
+
+## Ses seviyesi normalizasyonu (2026-09-11, dokuzuncu tur)
+
+Spec §16.4: "Ses hedefi başlangıç preset'i olarak yaklaşık -16 LUFS
+integrated ve true peak ≤ -1 dBTP; bu değerler platform zorunluluğu
+değil ürün miks varsayılanı." `app/media/audio.py::normalize_loudness`
+eklendi — ffmpeg'in `loudnorm` filtresiyle iki geçişli (ölç, sonra ölçülen
+değerlerle uygula) EBU R128 normalizasyonu yapıyor. `render_timeline_to_asset`
+(`app/services/render.py`) Remotion render'ı bitirdikten sonra bunu
+çağırıyor; başarılıysa dosyayı yerinde normalize edilmiş kopyayla
+değiştiriyor, ölçümü `Asset.audio_info_json`'a yazıyor. Ölçülemeyen
+girdide (`ffmpeg`'in kendi `-inf` LUFS eşiği — gerçek anlamda sessiz/
+ölçülemez sinyal) veya herhangi bir ffmpeg geçişi başarısız olursa dosya
+olduğu gibi bırakılıyor — bir mix iyileştirmesi asla zaten başarılı bir
+render'ı başarısız etmiyor.
+
+**Geliştirirken gerçek bir hata bulundu ve düzeltildi:** ilk yazımda
+`-c:v copy` bayrağı koşulsuz ekleniyordu; gerçek bir ElevenLabs ses
+dosyasıyla (video akışı olmayan bir MP3) test edilince ffmpeg "Invalid
+argument" ile başarısız oldu — kopyalanacak bir video akışı yoktu.
+`technical_qc.probe_media` ile girdinin gerçekten video akışı olup
+olmadığı kontrol edilip bayrak yalnızca varsa ekleniyor artık; mp3 çıktısı
+için de `aac` yerine `libmp3lame` kullanılıyor.
+
+**Canlı kanıt (üç ayrı gerçek dosyayla):**
+1. **Gerçek ElevenLabs seslendirme örneği** (bu oturumun Safha 8'inde
+   üretilmiş gerçek bir MP3, `backend/.tools/test_capture/` altına
+   kopyalandı — yerel geliştirme artefaktı, commit edilmiyor):
+   ölçüm gerçek bir LUFS değeri verdi; çıktı dosyası yeniden ölçüldüğünde
+   sonucun hedefe (-16 LUFS, ±1.5 tolerans) yaklaştığı doğrulandı — yani
+   düzeltme gerçekten "çalıştı" iddiası, yalnızca ffmpeg'in 0 döndüğü
+   değil.
+2. **Gerçek, sessize yakın bir scrcpy kaydı** (Safha 4'ün
+   `safha4_live_test.mp4`'ü — `test_technical_qc.py` da aynı dosyayı
+   kullanıyor): ffmpeg bunun `input_i: -inf` (ölçülemez) olduğunu
+   raporladı; fonksiyonun bunu doğru şekilde `None` döndürüp dosyaya
+   dokunmadığı doğrulandı — bu gerçek bir bulgu (bu kaydın gerçekten
+   ölçülebilir sesi yok), fonksiyon hatası değil.
+3. **Gerçek Synova projesi, tam bir önizleme render'ı**: `POST
+   .../render/preview` tetiklendi, gerçek bir Remotion render'ı
+   tamamlandı, sonuçtaki Asset'in `audio_info_json`'ı gerçek ölçümü
+   taşıyordu: `measured_integrated_lufs: -17.15` (hedef: `-16.0`),
+   `measured_true_peak_dbtp: -5.33`.
+
+Birim testleri eklendi: `test_audio_media.py` (6 test — ffmpeg eksik,
+ölçüm+uygulama akışı, sessiz girdi atlama, ölçüm/uygulama/timeout hata
+yolları, audio-only girdi için `-c:v` atlanması), `test_render_service.py`'e
+2 yeni test (normalizasyon başarılı/başarısız yolları için
+`audio_info_json` doğrulaması). `tests/integration/test_audio_normalization.py`
+gerçek dosyalarla iki test (yukarıdaki 1 ve 2).
+
+`pytest -q`: **251 passed, 11 deselected**.

@@ -75,6 +75,16 @@ def _fake_technical_qc(monkeypatch):
     return report
 
 
+@pytest.fixture(autouse=True)
+def _fake_no_loudness_normalization(monkeypatch):
+    """Default every test to "normalization unavailable" (mirrors a real
+    environment with no usable audio track / no ffmpeg) so most tests
+    don't pay for a real ffmpeg subprocess call on a fake, non-MP4 byte
+    string. Tests that care about the loudness path override this."""
+
+    monkeypatch.setattr(render_service.audio_media, "normalize_loudness", lambda *a, **k: None)
+
+
 def test_render_preview_job_stages_assets_and_persists_output(monkeypatch, db_session, tmp_path):
     project, shot = _setup_project_with_gameplay_take(db_session, tmp_path)
 
@@ -119,3 +129,68 @@ def test_render_preview_job_requires_a_plan(db_session):
 
     with pytest.raises(ValidationAppError):
         render_service.render_preview_job(db_session, project.id)
+
+
+def test_render_preview_job_records_loudness_when_normalization_succeeds(monkeypatch, db_session, tmp_path):
+    from app.media import audio as audio_media
+
+    project, shot = _setup_project_with_gameplay_take(db_session, tmp_path)
+    monkeypatch.setattr(render_service.shutil, "which", lambda name: "C:/fake/npx.cmd")
+
+    def fake_run(argv, **kwargs):
+        from pathlib import Path
+
+        output_path = argv[5]
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(output_path).write_bytes(b"fake-rendered-mp4")
+        return MagicMock(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(render_service.subprocess, "run", fake_run)
+
+    fake_result = audio_media.LoudnessResult(
+        measured_integrated_lufs=-23.1, measured_true_peak_dbtp=-3.2, measured_lra_lu=6.0,
+    )
+
+    def fake_normalize(input_path, output_path):
+        # a real normalize would write a (different) file; the fake mimics
+        # that so render.py's replace()/unlink() logic exercises for real.
+        output_path.write_bytes(b"fake-normalized-mp4")
+        return fake_result
+
+    monkeypatch.setattr(render_service.audio_media, "normalize_loudness", fake_normalize)
+
+    asset = render_service.render_preview_job(db_session, project.id)
+
+    assert asset.audio_info_json["loudness_normalized"] is True
+    assert asset.audio_info_json["measured_integrated_lufs"] == -23.1
+    assert asset.audio_info_json["target_integrated_lufs"] == audio_media.TARGET_INTEGRATED_LUFS
+
+    from pathlib import Path
+
+    # the final persisted file is the normalized one, not the raw Remotion output
+    assert (Path(project.root_path) / asset.relative_path).read_bytes() == b"fake-normalized-mp4"
+
+
+def test_render_preview_job_keeps_original_file_when_normalization_is_unavailable(monkeypatch, db_session, tmp_path):
+    project, shot = _setup_project_with_gameplay_take(db_session, tmp_path)
+    monkeypatch.setattr(render_service.shutil, "which", lambda name: "C:/fake/npx.cmd")
+
+    def fake_run(argv, **kwargs):
+        from pathlib import Path
+
+        output_path = argv[5]
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(output_path).write_bytes(b"fake-rendered-mp4")
+        return MagicMock(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(render_service.subprocess, "run", fake_run)
+    # e.g. no usable audio track, ffmpeg missing, or either pass failed
+    monkeypatch.setattr(render_service.audio_media, "normalize_loudness", lambda *a, **k: None)
+
+    asset = render_service.render_preview_job(db_session, project.id)
+
+    assert asset.audio_info_json == {"loudness_normalized": False}
+
+    from pathlib import Path
+
+    assert (Path(project.root_path) / asset.relative_path).read_bytes() == b"fake-rendered-mp4"

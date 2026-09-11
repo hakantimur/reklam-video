@@ -21,6 +21,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from app.media import audio as audio_media
 from app.media import technical_qc
 from app.models.asset import Asset
 from app.services import assets as assets_service
@@ -44,6 +45,26 @@ def stage_asset(session: Session, asset_id: str, item_id: str) -> str:
     PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(path, PUBLIC_DIR / filename)
     return filename
+
+
+def _normalize_loudness_in_place(output_path: Path) -> audio_media.LoudnessResult | None:
+    """Best-effort: replace `output_path` with a loudness-normalized copy
+    (spec §16.4's -16 LUFS / -1 dBTP product mix default) and return the
+    measurement, or leave the file untouched and return `None` if it
+    couldn't be measured/normalized — never lets a mixing enhancement
+    fail an otherwise-successful render."""
+
+    normalized_path = output_path.with_name(f"{output_path.stem}-normalized{output_path.suffix}")
+    try:
+        result = audio_media.normalize_loudness(output_path, normalized_path)
+        if result is None:
+            return None
+        normalized_path.replace(output_path)
+        return result
+    except OSError:
+        return None
+    finally:
+        normalized_path.unlink(missing_ok=True)
 
 
 def render_timeline_to_asset(
@@ -92,6 +113,8 @@ def render_timeline_to_asset(
         tail = (result.stderr or result.stdout or "")[-2000:]
         raise RenderError(f"Remotion render başarısız: {tail}")
 
+    loudness = _normalize_loudness_in_place(output_path)
+
     report = technical_qc.run_technical_qc(output_path)
     digest = hashlib.sha256()
     with output_path.open("rb") as f:
@@ -105,6 +128,19 @@ def render_timeline_to_asset(
     }
     metadata.update(extra_metadata or {})
 
+    audio_info = (
+        {
+            "loudness_normalized": True,
+            "measured_integrated_lufs": loudness.measured_integrated_lufs,
+            "measured_true_peak_dbtp": loudness.measured_true_peak_dbtp,
+            "measured_lra_lu": loudness.measured_lra_lu,
+            "target_integrated_lufs": loudness.target_integrated_lufs,
+            "target_true_peak_dbtp": loudness.target_true_peak_dbtp,
+        }
+        if loudness is not None
+        else {"loudness_normalized": False}
+    )
+
     asset = Asset(
         project_id=project_id,
         type=asset_type,
@@ -114,6 +150,7 @@ def render_timeline_to_asset(
         byte_size=output_path.stat().st_size,
         duration_us=duration_us,
         dimensions_json={"width": report.probe.width, "height": report.probe.height} if report.probe else {},
+        audio_info_json=audio_info,
         metadata_json=metadata,
     )
     session.add(asset)
