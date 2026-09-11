@@ -340,6 +340,18 @@ tekrar "en son revizyon" oldu.
 
 `pytest -q`: 189 passed, 11 deselected (1 yeni regresyon testi).
 
+## Gerçek altyazı render'ı (2026-09-11, üçüncü tur devamı)
+
+`app/services/timeline.py`'nin altyazı öğeleri artık `transform.captionText`
+içinde gerçek `Shot.caption_text`'i taşıyor; `AdComposition.tsx`'teki
+`SubtitleItemRenderer` bunu (yoksa eski pozisyon placeholder'ına dönerek)
+gerçekten ekrana basıyor. Gerçek Synova projesi yeniden render edildi,
+sonuçtan bağımsız bir kare çıkarıldı: gerçek AI sahnesinin üzerinde
+gerçek Türkçe altyazı ("Sekiz farklı oyunla her gün yeni bir beyin
+harikası keşfedin.") doğru konumda ve okunaklı şekilde görünüyor.
+
+`pytest -q`: 189 passed, 11 deselected (mevcut bir test güncellendi).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

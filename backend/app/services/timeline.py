@@ -117,6 +117,7 @@ def build_timeline(session: Session, project_id: str) -> dict:
                     "shot_id": shot.id,
                     "start_frame": start,
                     "duration_frames": duration,
+                    "transform": {"captionText": shot.caption_text},
                     "lock": bool(locks.get("caption")),
                 }
             )

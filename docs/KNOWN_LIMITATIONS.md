@@ -87,10 +87,13 @@ liste boşalana kadar kullanılmaz.
 
 ## Safha 9 — gerçek timeline + render (2026-09-11)
 
-1. **Altyazı (subtitle) track'i hâlâ pozisyon placeholder'ı.** `caption_text`
-   bir sahnede varsa timeline'a doğru start/duration ile ekleniyor, ama
-   `AdComposition`'da hâlâ `[altyazı placeholder — item-id]` yazısı
-   gösteriyor — gerçek metni ekrana basmak bu turda kapsam dışı kaldı.
+1. ~~Altyazı (subtitle) track'i hâlâ pozisyon placeholder'ı~~ — **çözüldü
+   (2026-09-11, üçüncü tur)**: `timeline.py` artık `transform.captionText`
+   içinde gerçek `caption_text`'i taşıyor, `AdComposition` bunu gerçekten
+   ekrana basıyor. Gerçek Synova projesinde yeniden render edilip bir kare
+   bağımsız olarak çıkarıldı — Türkçe altyazı ("Sekiz farklı oyunla her
+   gün yeni bir beyin harikası keşfedin.") gerçek AI sahnesinin üzerinde
+   doğru şekilde görünüyor.
 2. **Ses karıştırma/kısma (ducking) yok.** Gameplay/AI klibinin kendi
    gömülü sesi (varsa) ve ayrı seslendirme aynı anda, hiçbir seviye
    ayarlaması olmadan çalıyor.

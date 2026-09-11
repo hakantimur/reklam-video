@@ -59,6 +59,7 @@ def test_build_timeline_positions_shots_sequentially(db_session):
     subtitle_items = timeline["tracks"][2]["items"]
     assert len(subtitle_items) == 1
     assert subtitle_items[0]["shot_id"] == shot2.id
+    assert subtitle_items[0]["transform"]["captionText"] == "Merhaba"
 
 
 def test_build_timeline_prefers_selected_take_over_latest(db_session):

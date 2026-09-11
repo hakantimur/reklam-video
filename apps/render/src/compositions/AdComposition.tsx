@@ -179,7 +179,8 @@ function AudioPlaceholder({
   );
 }
 
-function SubtitlePlaceholder({ item }: { item: TrackItem }) {
+function SubtitleItemRenderer({ item }: { item: TrackItem }) {
+  const captionText = item.transform?.captionText;
   return (
     <AbsoluteFill
       style={{
@@ -202,7 +203,7 @@ function SubtitlePlaceholder({ item }: { item: TrackItem }) {
           textAlign: "center",
         }}
       >
-        [altyazı placeholder — {item.id}]
+        {captionText ?? `[altyazı placeholder — ${item.id}]`}
       </div>
     </AbsoluteFill>
   );
@@ -450,7 +451,7 @@ function TrackItemRenderer({
     case "audio":
       return <AudioItemRenderer item={item} trackId={track.id} rowIndex={audioRowIndex} />;
     case "subtitle":
-      return <SubtitlePlaceholder item={item} />;
+      return <SubtitleItemRenderer item={item} />;
     case "graphics":
       return <GraphicItemRenderer item={item} />;
     default:

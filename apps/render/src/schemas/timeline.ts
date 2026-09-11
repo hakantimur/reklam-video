@@ -78,6 +78,9 @@ export interface TrackItemRenderExt {
    * so an unfinished timeline is always visibly unfinished.
    */
   realFile?: string;
+  /** Only meaningful for subtitle-track items — the real caption text to
+   * burn in, straight from `Shot.caption_text`. */
+  captionText?: string;
   [key: string]: unknown;
 }
 
