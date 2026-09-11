@@ -462,4 +462,49 @@ için ileride ayrı, daha uzun bütçeli bir keşif/yakalama turu (veya
 baseline akışını atlayıp doğrudan bir oyun moduna gitmeyi öğrenen bir
 navigation_json) gerekebilir.
 
+## KRİTİK: reference-image grounding yalnızca ilk kareyi çapalıyor, klibin geri kalanı hâlâ halüsinasyon üretiyor (2026-09-11, ondördüncü tur)
+
+Kullanıcı gerçek-uygulama düzeltmesinden sonra gönderilen videoyu da
+"videoda kullandığı görseller Synova'ya ait değil" diye reddetti. Bu
+sefer videonun TAMAMI (kaynak take'lerden tek kare değil, gerçek
+export'un 1fps ile çıkarılmış TÜM kareleri) tek tek incelendi ve kesin
+kanıt bulundu:
+
+- Hook sahnesinin (0-4sn) yalnızca ilk ~1 saniyesi gerçek: uygulamanın
+  gerçek açılış/yükleme logosu (pembe-turkuaz-sarı "S" ikonu — bu
+  GERÇEK, canlı ADB screencap ile ayrıca doğrulandı, ham yakalama
+  dosyasının aynı karesinde de var).
+- Ondan sonraki ~3 saniye TAMAMEN halüsinasyon: bir kelime bulmaca
+  oyunu (turuncu harfler), neon üçgen eşleştirme oyunu (mor), ve
+  emoji/karikatür eşleştirme oyunu (yeşil) — üçü de ekranı bölerek iç
+  içe geçmiş halde. Bunların hiçbiri gerçek Synova'da yok; modelin
+  "sekiz farklı oyun" konseptini betimlemeye çalışırken TEK referans
+  kareden ötesini uydurmasının sonucu.
+- Montaj ve CTA sahneleri incelenen karelerde büyük ölçüde doğru/gerçek
+  göründü (gerçek "synova" yazısı, gerçek UI metni), yalnızca Hook
+  sahnesinde bu şiddette bir kayma var — muhtemelen Hook'un prompt'unun
+  açıkça "sekiz farklı oyun" çeşitliliğini betimlemeyi istemesi
+  (`purpose: "Hook and establish product with colorful game variety
+  theme"`), oysa grounding yalnızca TEK bir gerçek ekran görüntüsü
+  sağlıyor — model geri kalanını uydurmak zorunda kalıyor.
+
+**Kök neden (netleşti):** `frame_type: "first_frame"` yalnızca klibin
+AÇILIŞ karesini gerçek referansa yakın tutuyor; OpenRouter/Veo'nun
+`reference_image_paths`/`frame_images` özelliği klip boyunca sürekli
+bir "bu gerçek ekranı göster" kısıtı UYGULAMIYOR. Bu, önceki turlarda
+tek bir orta kareye bakarak yaptığım doğrulamanın (frame index 15/37)
+şans eseri iyi bir ana denk gelip bu kaymayı kaçırmasına neden oldu —
+bir dahaki sefere bir AI klibin kalitesini doğrularken KLİBİN TAMAMINI
+(birden fazla kare, ideal olarak `fps=1` ile tüm süre) incelemek
+gerekiyor, tek bir orta kare yeterli değil.
+
+**Henüz düzeltilmedi — daha fazla gerçek para harcamadan önce
+kullanıcıya bu bulgu raporlandı.** Olası yollar: (a) Hook sahnesinin
+prompt'unu "çeşitlilik" vurgusundan arındırıp tek gerçek ekrana sadık
+kalacak şekilde yeniden yazmak, (b) Hook sahnesi için AI üretimi yerine
+gerçek ekran kaydı + metin/grafik overlay kullanmak (çeşitlilik iddiası
+zaten caption/voice-over'da var, görüntünün bunu birebir göstermesi
+şart değil), (c) daha kısa AI klipleri (kaymanın daha az zamanı
+olması için) — kullanıcının tercihi bekleniyor.
+
 Bu bölüm ilerledikçe güncellenecektir.
