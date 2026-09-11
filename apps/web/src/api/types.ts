@@ -245,6 +245,15 @@ export interface ShotReview {
   created_at: string;
 }
 
+// --- budget (spec §19.1) -------------------------------------------------
+
+export interface BudgetSummary {
+  user_cap_microusd: number | null;
+  settled_cost_microusd: number;
+  active_reservations_microusd: number;
+  available_microusd: number | null;
+}
+
 // --- settings / credentials (spec §8.1 PUT /settings/credentials/{provider}) ---
 
 export type CredentialProvider = "openrouter" | "elevenlabs";

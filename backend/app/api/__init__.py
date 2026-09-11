@@ -1,6 +1,7 @@
 from app.api import (
     assets,
     briefs,
+    budget,
     capture,
     concepts,
     discover,
@@ -24,6 +25,7 @@ from app.api import (
 ROUTERS = [
     projects.router,
     briefs.router,
+    budget.router,
     assets.router,
     jobs.router,
     settings.router,

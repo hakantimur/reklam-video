@@ -3,6 +3,7 @@ import type {
   AssetSummary,
   BriefPayload,
   BriefResponse,
+  BudgetSummary,
   CaptureJob,
   Concept,
   CreateProjectPayload,
@@ -202,6 +203,8 @@ export const api = {
 
   openProjectFolder: (id: string) =>
     request<void>(`/projects/${id}/open-folder`, { method: "POST" }),
+
+  getBudget: (projectId: string) => request<BudgetSummary>(`/projects/${projectId}/budget`),
 
   generateConcepts: (projectId: string, model?: string) =>
     request<Concept[]>(`/projects/${projectId}/concepts`, {

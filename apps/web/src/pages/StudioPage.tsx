@@ -39,11 +39,14 @@ export function StudioPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-100">Stüdyo</h1>
-        <p className="text-sm text-slate-400">
-          Brief → Keşif → Senaryo → Çekim → Taslak → Düzenle → Çıktı
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-100">Stüdyo</h1>
+          <p className="text-sm text-slate-400">
+            Brief → Keşif → Senaryo → Çekim → Taslak → Düzenle → Çıktı
+          </p>
+        </div>
+        {activeProjectId ? <BudgetIndicator projectId={activeProjectId} /> : null}
       </div>
 
       <StepTabs />
@@ -136,4 +139,38 @@ function BriefStep({ projectId }: { projectId: string }) {
   }
 
   return <BriefForm projectId={projectId} />;
+}
+
+function BudgetIndicator({ projectId }: { projectId: string }) {
+  const budgetQuery = useQuery({
+    queryKey: ["budget", projectId],
+    queryFn: () => api.getBudget(projectId),
+    // Bütçe her gerçek AI/API çağrısından sonra değişebilir; sekme açıkken
+    // taze kalması için ara sıra kendiliğinden yenilensin.
+    refetchInterval: 15000,
+  });
+
+  const budget = budgetQuery.data;
+  if (!budget || budget.user_cap_microusd === null) return null;
+
+  const spentUsd = budget.settled_cost_microusd / 1_000_000;
+  const capUsd = budget.user_cap_microusd / 1_000_000;
+  const availableUsd = (budget.available_microusd ?? 0) / 1_000_000;
+  const overBudget = availableUsd < 0;
+
+  return (
+    <div
+      className={[
+        "shrink-0 rounded-md border px-3 py-1.5 text-xs",
+        overBudget ? "border-error/60 bg-error/10 text-error" : "border-slate-700 bg-surface/60 text-slate-300",
+      ].join(" ")}
+      title="Gerçek, sağlayıcı onaylı harcamalar (tahmin değil) toplanır."
+    >
+      <span className="font-semibold">Bütçe: </span>
+      ${spentUsd.toFixed(2)} / ${capUsd.toFixed(2)}
+      {budget.active_reservations_microusd > 0 ? (
+        <span className="text-slate-500"> (+${(budget.active_reservations_microusd / 1_000_000).toFixed(2)} rezerve)</span>
+      ) : null}
+    </div>
+  );
 }

@@ -751,3 +751,32 @@ artık "orijinal Asset değişmedi, yeni bir klon oluştu" doğruluyor; yeni
 tam senaryoyu (iki kardeş, aynı temel sahne) birim testinde tekrarlıyor.
 
 `pytest -q`: **226 passed, 11 deselected**.
+
+## Bütçe UI'ı: harcanan/kalan bütçe artık görünür (2026-09-11, sekizinci tur)
+
+Bu oturum boyunca gerçek video (Veo) ve gerçek LLM chat completion
+maliyetleri `BudgetEntry` tablosuna doğru şekilde yazılıyordu (bkz.
+yukarıdaki "Gerçek LLM maliyet kaydı" bölümleri), ama `budget_service.
+get_budget_summary`'yi okuyan hiçbir uç nokta yoktu — tüm bu maliyet
+takibi kullanıcıya tamamen görünmezdi.
+
+- `GET /projects/{id}/budget` eklendi (`app/api/budget.py`,
+  `BudgetSummaryOut` — `user_cap_microusd`, `settled_cost_microusd`,
+  `active_reservations_microusd`, `available_microusd`).
+- Stüdyo ekranının başlığına, aktif proje varken her zaman görünen bir
+  "Bütçe: $X / $Y" göstergesi eklendi (aktif rezervasyon varsa ayrıca
+  gösteriliyor, bütçe aşılmışsa kırmızı), 15 saniyede bir kendiliğinden
+  yenileniyor.
+
+**Canlı kanıt:** gerçek Synova projesinde `GET .../budget` çağrıldı →
+`{"user_cap_microusd": 5000000, "settled_cost_microusd": 325957,
+"active_reservations_microusd": 0, "available_microusd": 4674043}` —
+yani `$0.325957 / $5.00`, bu oturum boyunca gerçekten settle edilmiş
+Veo video maliyeti (`$0.32`) ile LLM review maliyetinin (`$0.005957`)
+tam doğru toplamı.
+
+Birim testleri eklendi: `test_budget_api.py` — aktivite yokken tam
+tavan, gerçek bir settlement sonrası doğru düşme, brief'siz projede
+`null` tavan.
+
+`npm run build` temiz. `pytest -q`: **229 passed, 11 deselected**.
