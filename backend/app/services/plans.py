@@ -99,6 +99,23 @@ def get_latest_revision(session: Session, project_id: str) -> Revision | None:
     )
 
 
+def list_revisions(session: Session, project_id: str) -> list[Revision]:
+    """Full revision history for a project (spec §5.3 "önceki sürümle
+    karşılaştırma" — this is the read side of that: newest first, so the
+    Studio can show what each variation changed without needing the
+    caller to already know a revision id)."""
+
+    return list(
+        session.execute(
+            select(Revision)
+            .where(Revision.project_id == project_id)
+            .order_by(Revision.sequence_no.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+
 def get_shots_for_revision(session: Session, revision_id: str) -> list[Shot]:
     return list(
         session.execute(

@@ -688,3 +688,21 @@ gerçek bir tarayıcıda tıklanması görsel olarak doğrulanamadı; yalnızca
 gerçek HTTP uç noktaları üzerinden (yukarıdaki gibi) doğrulandı.
 
 `pytest -q` (backend dizininden): **222 passed, 11 deselected**.
+
+## Revizyon geçmişi (2026-09-11, yedinci tur devamı)
+
+`GET /projects/{id}/revisions` eklendi (`plans_service.list_revisions`,
+salt-okunur, en yeni önce) ve Senaryo ekranına 2+ revizyon varsa görünen
+bir "Revizyon geçmişi" listesi eklendi (sıra no, sahne sayısı, değişiklik
+özeti, oluşturulma zamanı, güncel revizyon işaretli).
+
+**Canlı kanıt:** gerçek Synova projesinde `GET .../revisions` çağrıldı —
+bu oturum boyunca gerçekten oluşturulmuş 4 revizyonun tamamı, doğru
+`sequence_no` sırasıyla (4,3,2,1) ve doğru `parent_id` zincirleriyle
+döndü (`#1` → ilk plan, `#2`/`#3`/`#4` → gerçek varyasyonlar).
+
+Birim testleri eklendi: `test_list_revisions_api.py` (yeni-eskiye sıra +
+sahne sayısı + parent zinciri, plansız proje için boş liste, projeler
+arası veri sızıntısı olmadığı).
+
+`npm run build` temiz. `pytest -q`: **225 passed, 11 deselected**.

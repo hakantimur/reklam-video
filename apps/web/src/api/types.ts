@@ -135,6 +135,16 @@ export interface Revision {
   shots: PlanShot[];
 }
 
+export interface RevisionSummary {
+  id: string;
+  parent_id: string | null;
+  sequence_no: number;
+  status: string;
+  change_summary: string | null;
+  shot_count: number;
+  created_at: string;
+}
+
 // --- capture / takes (spec §11, §7.2 "takes" tablosu, §8.1 Safha 7) -----
 
 export interface CaptureJob {

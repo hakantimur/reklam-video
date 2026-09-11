@@ -15,6 +15,7 @@ import type {
   QAReport,
   RenderJob,
   Revision,
+  RevisionSummary,
   ReviewJob,
   ShotReview,
   Take,
@@ -220,6 +221,8 @@ export const api = {
     }),
 
   getPlan: (projectId: string) => request<Revision | null>(`/projects/${projectId}/plan`),
+
+  listRevisions: (projectId: string) => request<RevisionSummary[]>(`/projects/${projectId}/revisions`),
 
   updateShotLocks: (projectId: string, shotId: string, locks: Partial<Record<string, boolean>>) =>
     request<PlanShot>(`/projects/${projectId}/shots/${shotId}/locks`, {

@@ -68,6 +68,7 @@ export function ConceptsStep({ projectId }: { projectId: string }) {
     onSuccess: () => {
       setInstructions({});
       queryClient.invalidateQueries({ queryKey: ["plan", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["revisions", projectId] });
     },
   });
 
@@ -251,9 +252,55 @@ export function ConceptsStep({ projectId }: { projectId: string }) {
                 ) : null}
               </div>
             ) : null}
+
+            <RevisionHistory projectId={projectId} currentRevisionId={currentRevisionId} />
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+function RevisionHistory({
+  projectId,
+  currentRevisionId,
+}: {
+  projectId: string;
+  currentRevisionId: string | undefined;
+}) {
+  const historyQuery = useQuery({
+    queryKey: ["revisions", projectId],
+    queryFn: () => api.listRevisions(projectId),
+  });
+
+  const revisions = historyQuery.data ?? [];
+  if (revisions.length <= 1) return null; // nothing to compare yet
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-slate-800 pt-4">
+      <h3 className="text-sm font-semibold text-slate-200">Revizyon geçmişi</h3>
+      <ol className="flex flex-col gap-1.5">
+        {revisions.map((r) => (
+          <li
+            key={r.id}
+            className={[
+              "flex items-center justify-between rounded-md border px-3 py-1.5 text-xs",
+              r.id === currentRevisionId
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-slate-800 bg-surface/40 text-slate-400",
+            ].join(" ")}
+          >
+            <span>
+              #{r.sequence_no}
+              {r.id === currentRevisionId ? " (güncel)" : ""} — {r.shot_count} sahne
+              {r.change_summary ? ` — ${r.change_summary}` : ""}
+            </span>
+            <span className="shrink-0 text-slate-500">
+              {new Date(r.created_at).toLocaleString("tr-TR")}
+            </span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

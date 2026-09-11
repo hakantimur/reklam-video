@@ -101,3 +101,33 @@ def get_plan(project_id: str, session: Session = Depends(get_session)):
         change_summary=revision.change_summary,
         shots=[_shot_out(s) for s in shots],
     )
+
+
+class RevisionSummaryOut(BaseModel):
+    id: str
+    parent_id: str | None
+    sequence_no: int
+    status: str
+    change_summary: str | None
+    shot_count: int
+    created_at: str
+
+
+@router.get("/projects/{project_id}/revisions", response_model=list[RevisionSummaryOut])
+def list_revisions(project_id: str, session: Session = Depends(get_session)):
+    """Spec §5.3 "önceki sürümle karşılaştırma" (read side): the full
+    revision history for a project, newest first."""
+
+    revisions = plans_service.list_revisions(session, project_id)
+    return [
+        RevisionSummaryOut(
+            id=r.id,
+            parent_id=r.parent_id,
+            sequence_no=r.sequence_no,
+            status=r.status,
+            change_summary=r.change_summary,
+            shot_count=len(plans_service.get_shots_for_revision(session, r.id)),
+            created_at=r.created_at.isoformat(),
+        )
+        for r in revisions
+    ]
