@@ -109,9 +109,14 @@ liste boşalana kadar kullanılmaz.
    bağımsız olarak çıkarıldı — Türkçe altyazı ("Sekiz farklı oyunla her
    gün yeni bir beyin harikası keşfedin.") gerçek AI sahnesinin üzerinde
    doğru şekilde görünüyor.
-2. **Ses karıştırma/kısma (ducking) yok.** Gameplay/AI klibinin kendi
-   gömülü sesi (varsa) ve ayrı seslendirme aynı anda, hiçbir seviye
-   ayarlaması olmadan çalıyor.
+2. ~~Ses karıştırma/kısma (ducking) yok~~ — **kısmen çözüldü (2026-09-11,
+   beşinci tur)**: bir sahnenin seslendirmesi varsa (`voice_items`'ta aynı
+   `shot_id`), o sahnenin video klibinin kendi gömülü sesi otomatik olarak
+   kısılıyor (`volume=0.2`), yoksa tam seviyede kalıyor —
+   `timeline.py`'nin ürettiği `transform.hasVoiceOver` alanına göre
+   `AdComposition`'da uygulanıyor. Gerçek Synova projesinde yeniden
+   render edilerek hatasız çalıştığı doğrulandı; sabit `0.2` değeri bir
+   sezgisel varsayım, gerçek ses seviyesi ölçümüyle kalibre edilmedi.
 3. **Canvas sabit 1080x1920.** `placement_id`'den gerçek bir en-boy oranı
    türetilmiyor; farklı native çözünürlükteki kaynaklar (gameplay
    1080x2400, AI sahne 720x1280) `object-fit: cover` ile kırpılarak

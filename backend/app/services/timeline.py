@@ -81,6 +81,7 @@ def build_timeline(session: Session, project_id: str) -> dict:
         duration = shot.target_frames
         take = selected_or_best_take(session, shot)
         locks = shot.locks_json or {}
+        voice_asset = _voice_asset_for_shot(session, project_id, shot.id)
 
         video_items.append(
             {
@@ -90,13 +91,20 @@ def build_timeline(session: Session, project_id: str) -> dict:
                 "start_frame": start,
                 "duration_frames": duration,
                 "source_in_us": take.in_us if take else None,
-                "transform": {"placeholderLabel": shot.purpose},
+                "transform": {
+                    "placeholderLabel": shot.purpose,
+                    # Spec §16 audio ducking: a shot's own clip audio must
+                    # not fight a voice-over reading over it — the two are
+                    # always the same start/duration (see the voice item
+                    # below), so this is a per-item decision, not a
+                    # per-frame envelope.
+                    "hasVoiceOver": voice_asset is not None,
+                },
                 "opacity": 1,
                 "lock": bool(locks.get("visual")),
             }
         )
 
-        voice_asset = _voice_asset_for_shot(session, project_id, shot.id)
         if voice_asset is not None:
             voice_items.append(
                 {

@@ -81,6 +81,10 @@ export interface TrackItemRenderExt {
   /** Only meaningful for subtitle-track items — the real caption text to
    * burn in, straight from `Shot.caption_text`. */
   captionText?: string;
+  /** Only meaningful for video-track items — true when this shot has a
+   * voice-over playing over the same start/duration, so the clip's own
+   * embedded audio should duck rather than fight it. */
+  hasVoiceOver?: boolean;
   [key: string]: unknown;
 }
 

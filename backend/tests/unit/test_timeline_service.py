@@ -98,6 +98,17 @@ def test_build_timeline_includes_voice_asset_for_shot(db_session):
     voice_items = timeline["tracks"][1]["items"]
     assert len(voice_items) == 1
     assert voice_items[0]["asset_id"] == voice_asset.id
+    assert timeline["tracks"][0]["items"][0]["transform"]["hasVoiceOver"] is True
+
+
+def test_build_timeline_marks_video_without_voice_over(db_session):
+    project, revision = _setup_project(db_session)
+    shot = Shot(revision_id=revision.id, order_index=0, source_type="composed", purpose="p", target_frames=60)
+    db_session.add(shot)
+    db_session.commit()
+
+    timeline = timeline_service.build_timeline(db_session, project.id)
+    assert timeline["tracks"][0]["items"][0]["transform"]["hasVoiceOver"] is False
 
 
 def test_build_timeline_without_plan_is_validation_error(db_session):

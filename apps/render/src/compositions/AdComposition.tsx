@@ -119,10 +119,15 @@ function VideoItemRenderer({ item }: { item: TrackItem }) {
   const startFromFrames = item.source_in_us
     ? Math.round((item.source_in_us / 1_000_000) * fps)
     : 0;
+  // Audio ducking: a voice-over reading over this exact shot must not
+  // fight the clip's own embedded audio (real gameplay/AI clips often
+  // carry their own game sound or Veo-generated ambience).
+  const volume = item.transform?.hasVoiceOver ? 0.2 : 1;
   return (
     <OffthreadVideo
       src={staticFile(realFile)}
       startFrom={startFromFrames}
+      volume={volume}
       style={{ width: "100%", height: "100%", objectFit: "cover" }}
     />
   );

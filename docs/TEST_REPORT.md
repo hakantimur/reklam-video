@@ -422,6 +422,19 @@ incelemesinin QA'ya doğru şekilde entegre olduğu, ama zorunlu olmadığı
 `pytest -q`: 204 passed, 11 deselected (8 yeni test: `test_review_service.py`,
 `test_review_api.py`, artı `test_qa_service.py`'ye 2 yeni test).
 
+## Basit ses kısma (ducking) (2026-09-11, beşinci tur)
+
+`timeline.py` artık her video öğesine `transform.hasVoiceOver` ekliyor
+(o sahnenin bir seslendirmesi varsa `true`). `AdComposition.tsx`'teki
+`VideoItemRenderer` bunu okuyup `OffthreadVideo`'nun `volume` prop'unu
+ayarlıyor (`0.2` seslendirme varsa, `1` yoksa) — böylece bir sahnenin
+kendi gömülü sesi (gerçek oynanışın oyun sesi veya Veo'nun ürettiği
+ortam sesi) ayrı bir seslendirmeyle çakışmıyor. Gerçek Synova projesi
+yeniden render edilerek hatasız tamamlandığı doğrulandı (`hasVoiceOver`
+alanlarının doğru sahnelerde `true` döndüğü de ayrıca kontrol edildi).
+
+`pytest -q`: 206 passed, 11 deselected (2 yeni test).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/
