@@ -163,8 +163,23 @@ liste boşalana kadar kullanılmaz.
    dışa aktarılabilir" anlamına gelir, "her kare mutlaka bir LLM tarafından
    incelendi" anlamına gelmez — bunu zorunlu kılmak, önceden doğrulanmış
    canlı export akışını (hiç reviewer çalıştırmadan geçen) geriye dönük
-   bozar, bu yüzden bilinçli olarak yapılmadı. UI'da bu incelemeyi
-   tetikleyecek bir düğme de henüz yok (yalnızca API).
+   bozar, bu yüzden bilinçli olarak yapılmadı. ~~UI'da bu incelemeyi
+   tetikleyecek bir düğme de henüz yok~~ — **çözüldü (2026-09-11, beşinci
+   tur)**: `GET .../shots/{shot_id}/review` uç noktası eklendi (son
+   içerik incelemesini döner, hiç incelenmemişse `null`), Taslak
+   ekranındaki her AI sahne kartına "İçerik incele (AI)" düğmesi ve
+   geçti/reddedildi/belirsiz rozeti + gerekçe/kusur listesi eklendi.
+   Backend tarafı gerçek Synova projesindeki Hook sahnesi üzerinde CANLI
+   doğrulandı: önce `GET .../review` → `null` (hiç incelenmemiş), sonra
+   `POST .../review` ile gerçek bir vision LLM çağrısı (job
+   `7fcc9059-…`, `anthropic/claude-haiku-4.5`, 4 kare) → `outcome: pass`,
+   ardından tekrar `GET .../review` → aynı gerçek `reasoning`/`outcome`
+   bilgisini döndü. Frontend tarafı `tsc -b` ile temiz derlendi; ancak bu
+   oturumdaki tarayıcı önizleme sandbox'ı host'un `127.0.0.1:8765`
+   backend'ine ağ erişimi olmadığından (`net::ERR_FAILED`), düğmenin
+   gerçek bir tarayıcıda tıklanıp render edildiği görsel olarak
+   doğrulanamadı — bu dürüstçe açık bir boşluk, sahte bir "tarayıcıda
+   test edildi" iddiası değil.
 2. **Yerleşime (placement_id) özgü format doğrulaması yok.** Brief'teki
    `placement_id` hiçbir yerde gerçek bir platform format kuralına
    (en-boy oranı, maksimum süre, codec sınırı vb.) eşlenmiyor — bu,

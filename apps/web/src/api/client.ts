@@ -14,6 +14,8 @@ import type {
   QAReport,
   RenderJob,
   Revision,
+  ReviewJob,
+  ShotReview,
   Take,
   Timeline,
   VoiceOption,
@@ -292,6 +294,15 @@ export const api = {
 
   startExport: (projectId: string, revisionId: string) =>
     request<ExportJob>(`/projects/${projectId}/revisions/${revisionId}/export`, { method: "POST" }),
+
+  getShotReview: (projectId: string, shotId: string) =>
+    request<ShotReview | null>(`/projects/${projectId}/shots/${shotId}/review`),
+
+  startShotReview: (projectId: string, shotId: string, model?: string) =>
+    request<ReviewJob>(`/projects/${projectId}/shots/${shotId}/review`, {
+      method: "POST",
+      body: JSON.stringify(model ? { model } : {}),
+    }),
 };
 
 /** Bir hatayı kullanıcıya gösterilecek tek satırlık Türkçe metne çevirir. */

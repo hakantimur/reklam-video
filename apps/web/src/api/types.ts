@@ -220,6 +220,21 @@ export interface ExportJob {
   state: string;
 }
 
+// --- content review (spec §10: reviewer ajanı) --------------------------
+
+export interface ReviewJob {
+  job_id: string;
+  state: string;
+}
+
+export interface ShotReview {
+  outcome: "pass" | "fail" | "uncertain";
+  reasoning: string;
+  defects: string[];
+  reviewer_model: string | null;
+  created_at: string;
+}
+
 // --- settings / credentials (spec §8.1 PUT /settings/credentials/{provider}) ---
 
 export type CredentialProvider = "openrouter" | "elevenlabs";

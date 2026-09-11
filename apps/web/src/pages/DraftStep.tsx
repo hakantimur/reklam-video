@@ -10,6 +10,13 @@ import { LoadingState } from "../components/common/LoadingState";
 const ACTIVE_JOB_STATES = new Set(["queued", "running"]);
 const FRAMES_PER_SECOND = 30;
 const DEFAULT_VIDEO_MODEL = "google/veo-3.1-lite";
+const DEFAULT_REVIEW_MODEL = "anthropic/claude-haiku-4.5";
+
+const REVIEW_OUTCOME_LABEL: Record<string, string> = {
+  pass: "Geçti",
+  fail: "Reddedildi",
+  uncertain: "Belirsiz",
+};
 
 export function DraftStep({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
@@ -156,6 +163,8 @@ export function DraftStep({ projectId }: { projectId: string }) {
 
 function AiSceneCard({ projectId, shot }: { projectId: string; shot: PlanShot }) {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [activeReviewJobId, setActiveReviewJobId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const takesQuery = useQuery({
     queryKey: ["takes", projectId, shot.id],
@@ -175,12 +184,36 @@ function AiSceneCard({ projectId, shot }: { projectId: string; shot: PlanShot })
   });
   const job = jobQuery.data;
   const isRunning = job ? ACTIVE_JOB_STATES.has(job.state) : false;
-  const queryClient = useQueryClient();
   if (job?.state === "succeeded") {
     queryClient.invalidateQueries({ queryKey: ["takes", projectId, shot.id] });
   }
 
   const takes: Take[] = takesQuery.data ?? [];
+
+  const reviewQuery = useQuery({
+    queryKey: ["shot-review", projectId, shot.id],
+    queryFn: () => api.getShotReview(projectId, shot.id),
+    enabled: takes.length > 0,
+  });
+
+  const startReview = useMutation({
+    mutationFn: () => api.startShotReview(projectId, shot.id, DEFAULT_REVIEW_MODEL),
+    onSuccess: (reviewJob) => setActiveReviewJobId(reviewJob.job_id),
+  });
+
+  const reviewJobQuery = useQuery({
+    queryKey: ["review-job", activeReviewJobId],
+    queryFn: () => api.getJob(activeReviewJobId as string),
+    enabled: Boolean(activeReviewJobId),
+    refetchInterval: (query) => (query.state.data && ACTIVE_JOB_STATES.has(query.state.data.state) ? 4000 : false),
+  });
+  const reviewJob = reviewJobQuery.data;
+  const reviewRunning = reviewJob ? ACTIVE_JOB_STATES.has(reviewJob.state) : false;
+  if (reviewJob?.state === "succeeded") {
+    queryClient.invalidateQueries({ queryKey: ["shot-review", projectId, shot.id] });
+  }
+
+  const review = reviewQuery.data;
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-slate-700 bg-surface/60 p-4">
@@ -220,6 +253,53 @@ function AiSceneCard({ projectId, shot }: { projectId: string; shot: PlanShot })
               className="h-24 w-16 rounded bg-black object-cover"
             />
           ))}
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => startReview.mutate()}
+              disabled={startReview.isPending || reviewRunning}
+              className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {reviewRunning ? "İnceleniyor…" : review ? "Yeniden incele" : "İçerik incele (AI)"}
+            </button>
+            {review ? (
+              <span
+                className={
+                  "rounded px-2 py-0.5 text-xs font-semibold " +
+                  (review.outcome === "pass"
+                    ? "bg-green-900/40 text-green-300"
+                    : review.outcome === "fail"
+                      ? "bg-red-900/40 text-red-300"
+                      : "bg-yellow-900/40 text-yellow-300")
+                }
+              >
+                {REVIEW_OUTCOME_LABEL[review.outcome] ?? review.outcome}
+              </span>
+            ) : null}
+          </div>
+
+          {startReview.isError ? (
+            <ErrorBanner title="İnceleme başlatılamadı" message={describeApiError(startReview.error)} />
+          ) : null}
+          {reviewJob?.state === "failed" ? (
+            <p className="text-xs text-error">
+              İnceleme başarısız{reviewJob.error_code ? ` (${reviewJob.error_code})` : ""}.
+            </p>
+          ) : null}
+
+          {review ? (
+            <div className="rounded-md bg-bg/60 p-2 text-xs text-slate-400">
+              <p>{review.reasoning}</p>
+              {review.defects.length > 0 ? (
+                <ul className="mt-1 list-disc pl-4 text-red-300">
+                  {review.defects.map((defect, i) => (
+                    <li key={i}>{defect}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

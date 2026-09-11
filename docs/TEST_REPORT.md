@@ -435,8 +435,55 @@ alanlarının doğru sahnelerde `true` döndüğü de ayrıca kontrol edildi).
 
 `pytest -q`: 206 passed, 11 deselected (2 yeni test).
 
-## Canlı doğrulama engelleri (değişmedi)
+## İçerik incelemesi için UI tetikleyicisi (2026-09-11, beşinci tur devamı)
 
-OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/
-reviewer, gerçek video/TTS üretimi canlı doğrulanamadı. Kullanıcı anahtarı
-Ayarlar ekranından girdiğinde bu akışlar test edilebilir.
+Önceki turda eklenen reviewer ajanı yalnızca `POST .../review` ile API
+üzerinden tetiklenebiliyordu (bkz. yukarıdaki "İçerik/marka güvenliği
+reviewer'ı" bölümü, KNOWN_LIMITATIONS.md madde 1). Bu turda:
+
+- `GET /projects/{id}/shots/{shot_id}/review` eklendi
+  (`backend/app/api/review.py`) — sahnenin en son (varsa) içerik
+  incelemesini döner, hiç incelenmemişse `null`.
+- Taslak ekranındaki her AI sahne kartına (`DraftStep.tsx`
+  `AiSceneCard`) "İçerik incele (AI)" düğmesi, geçti/reddedildi/belirsiz
+  rozeti ve gerekçe + kusur listesi eklendi.
+- `apps/web/src/api/types.ts` / `client.ts`'e `ShotReview`,
+  `getShotReview`, `startShotReview` eklendi.
+
+**Backend canlı kanıt** (gerçek Synova projesi, Hook sahnesi
+`dd4d9c89-…`, gerçek OpenRouter anahtarı):
+1. `GET .../review` → `200 null` (hiç incelenmemiş).
+2. `POST .../review {"model":"anthropic/claude-haiku-4.5"}` → `202`,
+   job `7fcc9059-ff39-4205-87f5-b1305c0b5728`.
+3. Job ~13 saniyede `succeeded`: gerçek 4 kare örneklemesi + gerçek
+   vision LLM çağrısı, `outcome: "pass"`, gerçek, sahneye özgü gerekçe
+   metni ("Multiple distinct games are visible across the four
+   frames…").
+4. `GET .../review` tekrar çağrıldı → aynı gerçek `outcome`/`reasoning`/
+   `reviewer_model` (`anthropic/claude-haiku-4.5`) döndü — yani job'un
+   yazdığı `QAReport` satırı GET uç noktasından doğru okunuyor.
+
+**Frontend:** `npm run build` (`tsc -b && vite build`) temiz geçti.
+Backend testleri (`pytest -q` — `backend/` dizininden, çünkü
+`alembic.ini`'deki `migrations` yolu göreli): **208 passed, 11
+deselected** (2 yeni API testi: hiç incelenmemiş → `null`, gerçek
+`QAReport` satırı varken → doğru alanlar).
+
+**Doğrulanamayan kısım (dürüstçe belirtiliyor):** Bu oturumdaki tarayıcı
+önizleme aracı (Browser pane) ayrı bir ağ sandbox'ında çalışıyor ve
+host makinenin `127.0.0.1:8765` backend'ine bağlanamıyor
+(`net::ERR_FAILED` — hem `/health` hem `/projects` istekleri için).
+Bu yüzden yeni düğmenin gerçek bir tarayıcıda tıklanıp rozetin/
+gerekçenin göründüğü görsel olarak doğrulanamadı; yalnızca kod/tip
+düzeyinde (temiz derleme) ve backend'in gerçek HTTP kanıtıyla
+doğrulandı.
+
+## Canlı doğrulama engelleri (güncel)
+
+OpenRouter ve ElevenLabs API anahtarları bu oturumun başında Ayarlar
+ekranından girildi ve o zamandan beri onlarca gerçek, ücretli API
+çağrısı yapıldı (Veo video üretimi, ElevenLabs TTS, OpenRouter chat
+completions/vision) — yukarıdaki "Canlı doğrulama engelleri (değişmedi)"
+notu artık güncel değil, bilgi için burada bırakıldı. Bu oturumun tek
+gerçek doğrulama engeli, yukarıda açıklanan tarayıcı-sandbox ağ
+izolasyonu.
