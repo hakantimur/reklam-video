@@ -161,6 +161,13 @@ def create_revision_variation(
             )
             session.add(new_shot)
             session.flush()
+
+            if locks.get("voice"):
+                # The lock kept voice_text byte-identical to base_shot's, so
+                # a previously generated, already-paid-for voice-over still
+                # matches this shot's (possibly otherwise-revised) content —
+                # carry it forward same as the untouched-shot path below.
+                _carry_forward_voice_asset(session, project_id, base_shot.id, new_shot.id)
         else:
             new_shot = Shot(
                 revision_id=new_revision.id,

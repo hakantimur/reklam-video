@@ -584,7 +584,25 @@ alanı yeni sahne id'sine güncelleniyor.
 Birim test eklendi:
 `test_revisions_service.py::
 test_variation_carries_forward_a_voice_over_asset_to_the_new_shot_id`.
-`pytest -q`: **213 passed, 11 deselected**.
+
+**İlgili bir ikinci durum da aynı turda ele alındı:** bir sahne talimatla
+revize edilirken (`if instruction:` yolu) sesi kilitliyse (`locks.voice`),
+`voice_text` base sahneyle bit bit aynı kalıyor — yani önceden üretilmiş
+seslendirme hâlâ geçerli, ama önceki kodda yalnızca metin korunuyordu,
+ses Asset'i o yolda hiç taşınmıyordu. Aynı `_carry_forward_voice_asset`
+şimdi bu yol için de (yalnızca `locks.voice` true iken) çağrılıyor. Bu
+durum gerçek Synova projesinde CANLI denenmedi: hiçbir sahnede şu an
+`voice` kilidi açık değil ve kilitleri değiştirecek bir API/ekran henüz
+yok (bkz. KNOWN_LIMITATIONS.md — "kilit açma/kapama ekranı henüz yok");
+bunu canlı denemek ya gerçek planı sıfırdan yeniden üretmeyi (mevcut
+gerçek asset'leri riske atarak) ya da kapsam dışı yeni bir kilit-toggle
+endpoint'i gerektirirdi. Bunun yerine aynı, zaten canlı kanıtlanmış
+`_carry_forward_voice_asset` fonksiyonunun ikinci bir çağrı noktasından
+doğru parametrelerle tetiklendiği birim testiyle doğrulandı:
+`test_revisions_service.py::
+test_variation_carries_forward_voice_asset_when_voice_locked_on_an_instructed_shot`.
+
+`pytest -q`: **214 passed, 11 deselected**.
 
 ## Canlı doğrulama engelleri (güncel)
 

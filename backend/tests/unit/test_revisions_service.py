@@ -255,6 +255,57 @@ def test_variation_carries_forward_a_voice_over_asset_to_the_new_shot_id(monkeyp
     assert voice_asset.metadata_json["role"] == "voice_over"  # untouched fields survive
 
 
+def test_variation_carries_forward_voice_asset_when_voice_locked_on_an_instructed_shot(monkeypatch, db_session):
+    """A shot can be instructed to change (e.g. its visuals) while its
+    voice stays locked — `voice_text` is then kept byte-identical to the
+    base shot, so a previously generated voice-over still matches and
+    must not be silently dropped just because this shot went through the
+    `if instruction:` branch instead of the untouched carry-forward one."""
+
+    project, revision, shots = _setup_base_revision(
+        db_session,
+        shot_kwargs_list=[
+            {
+                "source_type": "ai_generated", "purpose": "Hook", "target_frames": 90,
+                "voice_text": "Sabit seslendirme metni",
+                "locks": {"visual": False, "voice": True, "caption": False, "timing": False},
+            },
+        ],
+    )
+    hook_shot = shots[0]
+    voice_asset = Asset(
+        project_id=project.id, type="audio", origin="provider_generation",
+        relative_path="generated/audio/x.mp3", sha256="h", byte_size=1,
+        metadata_json={"shot_id": hook_shot.id, "role": "voice_over", "voice_id": "v1"},
+    )
+    db_session.add(voice_asset)
+    db_session.commit()
+
+    revised = _revised_shot(
+        id=hook_shot.id, target_frames=hook_shot.target_frames, purpose="Punchier hook",
+        voice_text="Bu talimat tarafindan degistirilmis olurdu ama kilit korumali",
+    )
+    from app.services import revisions as revisions_mod
+
+    monkeypatch.setattr(revisions_mod, "regenerate_shot", lambda *a, **k: revised)
+
+    new_revision = revisions_service.create_revision_variation(
+        db_session, project.id, revision.id,
+        shot_instructions={hook_shot.id: "Make the visuals punchier, keep the voice"},
+        provider=MagicMock(), model="m",
+    )
+
+    from app.services import plans as plans_service
+
+    new_hook_shot = plans_service.get_shots_for_revision(db_session, new_revision.id)[0]
+    assert new_hook_shot.id != hook_shot.id
+    assert new_hook_shot.voice_text == "Sabit seslendirme metni"  # lock preserved base text
+    assert new_hook_shot.purpose == "Punchier hook"  # unlocked field still changed
+
+    db_session.refresh(voice_asset)
+    assert voice_asset.metadata_json["shot_id"] == new_hook_shot.id
+
+
 def test_variation_rejects_unknown_shot_id(db_session):
     project, revision, shots = _setup_base_revision(
         db_session, shot_kwargs_list=[{"source_type": "composed", "purpose": "CTA", "target_frames": 90}]
