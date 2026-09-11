@@ -37,10 +37,17 @@ def _carry_forward_voice_asset(session: Session, project_id: str, old_shot_id: s
     Takes have one, so a carried-forward shot's already-generated,
     already-paid-for voice-over would otherwise be silently orphaned the
     same way an unselected take used to silently disappear across a
-    variation (see this module's carry-forward take-selection fix). Since
-    the app only ever builds a timeline / shows a Taslak screen for the
-    latest revision, repointing the existing Asset's `shot_id` forward is
-    safe: no other in-app view still looks it up under the old shot id."""
+    variation (see this module's carry-forward take-selection fix).
+
+    This clones a new Asset row pointing at the new shot rather than
+    mutating the existing one in place — found live to matter: revisions
+    form a branching tree (multiple variations can share one parent), so
+    mutating the single Asset's `shot_id` pointer means whichever sibling
+    branch runs first "steals" the voice-over from every other sibling
+    still carrying forward the same base shot. Cloning costs nothing extra
+    on disk (`relative_path`/`sha256` are shared, same as multiple Take
+    rows already legitimately sharing one video `asset_id`) and leaves
+    every other branch's reference untouched."""
 
     voice_asset = (
         session.execute(
@@ -60,8 +67,18 @@ def _carry_forward_voice_asset(session: Session, project_id: str, old_shot_id: s
         return
     metadata = dict(voice_asset.metadata_json or {})
     metadata["shot_id"] = new_shot_id
-    voice_asset.metadata_json = metadata
-    session.add(voice_asset)
+    cloned = Asset(
+        project_id=voice_asset.project_id,
+        type=voice_asset.type,
+        origin=voice_asset.origin,
+        relative_path=voice_asset.relative_path,
+        sha256=voice_asset.sha256,
+        byte_size=voice_asset.byte_size,
+        duration_us=voice_asset.duration_us,
+        metadata_json=metadata,
+    )
+    session.add(cloned)
+    session.flush()
 
 
 def _get_revision(session: Session, project_id: str, revision_id: str) -> Revision:

@@ -251,8 +251,66 @@ def test_variation_carries_forward_a_voice_over_asset_to_the_new_shot_id(monkeyp
     assert new_hook_shot.id != hook_shot.id  # carry-forward always mints a new Shot row
 
     db_session.refresh(voice_asset)
-    assert voice_asset.metadata_json["shot_id"] == new_hook_shot.id
-    assert voice_asset.metadata_json["role"] == "voice_over"  # untouched fields survive
+    assert voice_asset.metadata_json["shot_id"] == hook_shot.id  # original untouched, not mutated
+
+    cloned = (
+        db_session.query(Asset)
+        .filter(Asset.project_id == project.id, Asset.id != voice_asset.id, Asset.type == "audio")
+        .one()
+    )
+    assert cloned.metadata_json["shot_id"] == new_hook_shot.id
+    assert cloned.metadata_json["role"] == "voice_over"  # untouched fields survive
+    assert cloned.relative_path == voice_asset.relative_path  # same underlying file, no re-upload
+    assert cloned.sha256 == voice_asset.sha256
+
+
+def test_variation_does_not_steal_a_voice_over_from_a_sibling_variation(monkeypatch, db_session):
+    """Two variations can share the same parent revision (a branching
+    tree, not a line) — found live: mutating the voice Asset's shot_id in
+    place meant whichever sibling ran first "stole" the voice-over from
+    every other sibling still carrying forward the same base shot. Each
+    variation must get its own reference to the same underlying file."""
+
+    project, revision, shots = _setup_base_revision(
+        db_session,
+        shot_kwargs_list=[
+            {"source_type": "ai_generated", "purpose": "Hook", "target_frames": 90, "voice_text": "Merhaba"},
+            {"source_type": "composed", "purpose": "CTA", "target_frames": 90},
+        ],
+    )
+    hook_shot = shots[0]
+    voice_asset = Asset(
+        project_id=project.id, type="audio", origin="provider_generation",
+        relative_path="generated/audio/x.mp3", sha256="h", byte_size=1,
+        metadata_json={"shot_id": hook_shot.id, "role": "voice_over"},
+    )
+    db_session.add(voice_asset)
+    db_session.commit()
+
+    cta_shot = shots[1]
+    revised = _revised_shot(id=cta_shot.id, target_frames=cta_shot.target_frames, source_type="composed", purpose="New CTA")
+    from app.services import revisions as revisions_mod
+
+    monkeypatch.setattr(revisions_mod, "regenerate_shot", lambda *a, **k: revised)
+
+    from app.services import plans as plans_service
+
+    sibling_a = revisions_service.create_revision_variation(
+        db_session, project.id, revision.id, shot_instructions={cta_shot.id: "Variant A"},
+        provider=MagicMock(), model="m",
+    )
+    sibling_b = revisions_service.create_revision_variation(
+        db_session, project.id, revision.id, shot_instructions={cta_shot.id: "Variant B"},
+        provider=MagicMock(), model="m",
+    )
+
+    hook_a = plans_service.get_shots_for_revision(db_session, sibling_a.id)[0]
+    hook_b = plans_service.get_shots_for_revision(db_session, sibling_b.id)[0]
+
+    voice_assets = db_session.query(Asset).filter(Asset.project_id == project.id, Asset.type == "audio").all()
+    shot_ids_with_voice = {a.metadata_json.get("shot_id") for a in voice_assets}
+    assert hook_a.id in shot_ids_with_voice
+    assert hook_b.id in shot_ids_with_voice  # not silently lost because sibling_a ran first
 
 
 def test_variation_carries_forward_voice_asset_when_voice_locked_on_an_instructed_shot(monkeypatch, db_session):
@@ -303,7 +361,14 @@ def test_variation_carries_forward_voice_asset_when_voice_locked_on_an_instructe
     assert new_hook_shot.purpose == "Punchier hook"  # unlocked field still changed
 
     db_session.refresh(voice_asset)
-    assert voice_asset.metadata_json["shot_id"] == new_hook_shot.id
+    assert voice_asset.metadata_json["shot_id"] == hook_shot.id  # original untouched
+
+    cloned = (
+        db_session.query(Asset)
+        .filter(Asset.project_id == project.id, Asset.id != voice_asset.id, Asset.type == "audio")
+        .one()
+    )
+    assert cloned.metadata_json["shot_id"] == new_hook_shot.id
 
 
 def test_variation_rejects_unknown_shot_id(db_session):

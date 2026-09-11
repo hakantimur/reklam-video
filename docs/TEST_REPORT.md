@@ -706,3 +706,48 @@ sahne sayısı + parent zinciri, plansız proje için boş liste, projeler
 arası veri sızıntısı olmadığı).
 
 `npm run build` temiz. `pytest -q`: **225 passed, 11 deselected**.
+
+## Dördüncü gerçek hata: kardeş varyasyonlar seslendirmeyi birbirinden çalıyordu (2026-09-11, yedinci tur devamı)
+
+Revizyon geçmişi ekranını canlı incelerken (bkz. yukarıdaki bölüm) fark
+edildi: gerçek Synova projesinin GÜNCEL revizyonundaki Hook sahnesi
+(`cf1a7d6f-…`) `hasVoiceOver: false` gösteriyordu — daha önce (bir önceki
+bölümde) ses kilidiyle CANLI doğrulanmış olan taşıma mekanizmasının
+kendisi bu sefer çalışmamıştı. Kök nedeni bulmak için gerçek revizyon
+zincirini sorgulayınca görüldü: aynı `parent_id`'den (`8d44364a-…`) İKİ
+farklı varyasyon türemişti — biri bir bug-tekrar-üretme script'i, biri
+gerçek UI-benzeri API testi, ikisi de AYNI temel Hook sahnesini (voice
+kilidiyle) hedefliyordu. `_carry_forward_voice_asset`'in önceki hâli
+(bkz. bir önceki bölüm) mevcut ses Asset'ini YERİNDE güncelliyordu; ilk
+çalışan kardeş (sequence #3) ses Asset'ini kendi yeni Hook sahnesine
+taşıdı, sonra ikinci kardeş (sequence #4, gerçek proje şu an bunu
+gösteriyordu) aynı eski `shot_id`'yi arayınca artık hiçbir Asset onu
+göstermiyordu — sessizce hiçbir şey yapmadı.
+
+**Düzeltme:** `_carry_forward_voice_asset` artık mevcut Asset satırını
+hiç değiştirmiyor; bunun yerine aynı dosyaya işaret eden (`relative_path`/
+`sha256`/`byte_size` aynı, disk'e ikinci bir kopya yazılmıyor) YENİ bir
+Asset satırı oluşturup onu yeni sahneye bağlıyor — Take'lerin zaten aynı
+`asset_id`'yi birden çok satırla paylaştığı desenin birebir aynısı.
+
+**Canlı kanıt** (gerçek Synova projesi, revizyon `2458dfbc-…`'nin Hook/CTA
+sahneleri — bunlar orijinal, doğru ses referanslarına sahip tek revizyondu):
+1. Aynı temel revizyondan (`2458dfbc-…`) montaj sahnesine iki FARKLI
+   gerçek talimat verilerek iki KARDEŞ varyasyon oluşturuldu (revizyon
+   `57be8864-…` ve `4f3f7dc4-…`).
+2. `GET .../assets?type=audio` ile doğrudan kontrol edildi: her iki
+   kardeşin de kendi Hook VE CTA sahne id'lerine işaret eden, bağımsız
+   ses Asset satırları vardı — biri diğerini çalmamıştı.
+3. Bu düzeltme aynı zamanda gerçek projeyi de onardı: yeni güncel
+   revizyon (`4f3f7dc4-…`) artık `POST .../timeline/build` ile yeniden
+   inşa edildiğinde Hook VE CTA için `hasVoiceOver: true` gösteriyor
+   (önceki turda kırılmış olan gerçek durum düzeltildi).
+
+Birim testleri güncellendi/eklendi:
+`test_variation_carries_forward_a_voice_over_asset_to_the_new_shot_id`
+ve `test_variation_carries_forward_voice_asset_when_voice_locked_on_an_instructed_shot`
+artık "orijinal Asset değişmedi, yeni bir klon oluştu" doğruluyor; yeni
+`test_variation_does_not_steal_a_voice_over_from_a_sibling_variation` bu
+tam senaryoyu (iki kardeş, aynı temel sahne) birim testinde tekrarlıyor.
+
+`pytest -q`: **226 passed, 11 deselected**.
