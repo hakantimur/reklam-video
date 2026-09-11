@@ -41,10 +41,14 @@ def _setup_shot(session, *, source_type="ai_generated", voice_text=None) -> tupl
 
 
 class _FakeVideoProvider:
-    def __init__(self, tmp_path: Path, *, states=("completed",)):
+    def __init__(self, tmp_path: Path, *, states=("completed",), models=None):
         self.tmp_path = tmp_path
         self._states = list(states)
+        self._models = models or []
         self.submit_calls: list = []
+
+    def list_models(self):
+        return self._models
 
     def validate_request(self, request):
         return VideoValidationResult(ok=True, resolved_duration_s=request.duration_s)
@@ -103,6 +107,67 @@ def test_generate_ai_scene_take_persists_asset_and_prompt(db_session, tmp_path):
     shot = db_session.get(Shot, shot_id)
     assert shot.generation_prompt == "A colorful phone showing a memory game"
     assert len(video_provider.submit_calls) == 1
+
+
+def test_generate_ai_scene_take_requests_the_nearest_supported_duration(db_session, tmp_path):
+    """Spec §9.3: when the shot's exact duration (here 3.0s from the
+    default 90-frame target) isn't one of the model's own supported
+    durations, request the nearest one that is >= the target — never a
+    shorter one — and let the timeline's own `Sequence durationInFrames`
+    (unrelated to this service) trim it down at render time."""
+
+    from app.schemas.provider import ProviderModel
+
+    project_id, shot_id = _setup_shot(db_session)
+    model = ProviderModel(id="test/video-model", supported_durations_s=[4.0, 6.0, 8.0])
+    video_provider = _FakeVideoProvider(tmp_path, models=[model])
+
+    generation_service.generate_ai_scene_take(
+        db_session, project_id, shot_id,
+        text_provider=_fake_text_provider(), text_model="test/model",
+        video_provider=video_provider, video_model="test/video-model",
+        poll_interval_s=0.01, max_wait_s=1.0,
+    )
+
+    request, _ = video_provider.submit_calls[0]
+    assert request.duration_s == 4.0  # nearest supported duration >= 3.0s, not 3.0s itself
+
+
+def test_generate_ai_scene_take_uses_the_exact_duration_when_it_is_already_supported(db_session, tmp_path):
+    from app.schemas.provider import ProviderModel
+
+    project_id, shot_id = _setup_shot(db_session)  # target_frames=90 -> 3.0s
+    model = ProviderModel(id="test/video-model", supported_durations_s=[3.0, 6.0])
+    video_provider = _FakeVideoProvider(tmp_path, models=[model])
+
+    generation_service.generate_ai_scene_take(
+        db_session, project_id, shot_id,
+        text_provider=_fake_text_provider(), text_model="test/model",
+        video_provider=video_provider, video_model="test/video-model",
+        poll_interval_s=0.01, max_wait_s=1.0,
+    )
+
+    request, _ = video_provider.submit_calls[0]
+    assert request.duration_s == 3.0
+
+
+def test_generate_ai_scene_take_falls_back_to_target_when_catalog_lookup_fails(db_session, tmp_path):
+    """A broken/unavailable model catalog must not block generation —
+    fall back to requesting the shot's own exact duration, same as
+    before this behavior existed."""
+
+    project_id, shot_id = _setup_shot(db_session)
+    video_provider = _FakeVideoProvider(tmp_path)  # list_models() returns [] -> no matching model
+
+    generation_service.generate_ai_scene_take(
+        db_session, project_id, shot_id,
+        text_provider=_fake_text_provider(), text_model="test/model",
+        video_provider=video_provider, video_model="test/video-model",
+        poll_interval_s=0.01, max_wait_s=1.0,
+    )
+
+    request, _ = video_provider.submit_calls[0]
+    assert request.duration_s == 3.0
 
 
 def test_generate_ai_scene_take_reuses_existing_prompt(db_session, tmp_path):

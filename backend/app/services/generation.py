@@ -34,6 +34,32 @@ DEFAULT_MAX_WAIT_S = 300.0
 _ASSUMED_FPS = 30
 
 
+def _pick_generation_duration_s(video_provider: VideoProvider, model_id: str, target_duration_s: float) -> float:
+    """Spec §9.3: when a shot's exact duration isn't one of the model's
+    own supported durations, request the nearest supported duration that
+    is still >= the target — never a shorter one, which would force
+    speeding up or stretching the clip to fill the shot. The rendered
+    timeline (`apps/render/src/compositions/AdComposition.tsx`) already
+    bounds every video item to `duration_frames` via Remotion's own
+    `<Sequence durationInFrames>`, regardless of the underlying asset's
+    real length, so requesting a longer clip and letting the timeline
+    truncate it is exactly "trim the used span" — no separate trim step
+    needed on this side."""
+
+    try:
+        models = video_provider.list_models()
+    except Exception:  # noqa: BLE001 - a catalog fetch failure must not block generation; fall back to the raw target
+        return target_duration_s
+
+    model = next((m for m in models if m.id == model_id), None)
+    supported = model.supported_durations_s if model else []
+    if not supported or target_duration_s in supported:
+        return target_duration_s
+
+    longer_or_equal = [d for d in supported if d >= target_duration_s]
+    return min(longer_or_equal) if longer_or_equal else max(supported)
+
+
 def _get_shot_in_revision(session: Session, project_id: str, shot_id: str) -> Shot:
     shot = session.get(Shot, shot_id)
     if shot is None:
@@ -86,7 +112,8 @@ def generate_ai_scene_take(
         session.commit()
         session.refresh(shot)
 
-    duration_s = max(shot.target_frames / _ASSUMED_FPS, 1.0)
+    target_duration_s = max(shot.target_frames / _ASSUMED_FPS, 1.0)
+    duration_s = _pick_generation_duration_s(video_provider, video_model, target_duration_s)
     request = VideoGenerationRequest(
         model_id=video_model, prompt=shot.generation_prompt, duration_s=duration_s, ratio=ratio, resolution=resolution
     )
@@ -142,6 +169,8 @@ def generate_ai_scene_take(
                 # Real, provider-confirmed spend (OpenRouter's `usage.cost`)
                 # — never an estimate. None when the provider didn't report one.
                 "actual_cost_usd": result.cost_usd,
+                "requested_duration_s": duration_s,
+                "target_duration_s": target_duration_s,
             },
         },
     )

@@ -881,3 +881,39 @@ yolları, audio-only girdi için `-c:v` atlanması), `test_render_service.py`'e
 gerçek dosyalarla iki test (yukarıdaki 1 ve 2).
 
 `pytest -q`: **251 passed, 11 deselected**.
+
+## Gerçek hata: desteklenmeyen süreli sahneler her zaman video üretimini başarısız ediyordu (2026-09-11, dokuzuncu tur)
+
+Kullanıcı gerçek Synova projesini tamamlamak isteyince (Hook + montaj
++ CTA sahnelerinin gerçek videosu eksikti), CTA sahnesinin video
+üretiminin HER ZAMAN başarısız olduğu yeniden teyit edildi:
+`generate_ai_scene_take`, sahnenin tam süresini (`target_frames/fps`,
+CTA için 2.5sn) doğrudan Veo'ya istek olarak gönderiyordu, ama
+`google/veo-3.1-lite` yalnızca [4,6,8]sn destekliyor. `validate_request`
+zaten doğru şekilde reddediyordu — ama hatanın kendi mesajı ("planner
+must render the nearest supported duration and trim the used span, not
+arbitrarily speed up the clip") aslında ne yapılması gerektiğini
+söylüyordu; kod bunu hiç uygulamıyordu.
+
+**Düzeltme:** `_pick_generation_duration_s` eklendi —
+`video_provider.list_models()`'dan modelin gerçek
+`supported_durations_s` listesini okuyup hedef süreye eşit veya ondan
+büyük en yakın süreyi seçiyor (asla daha kısa — bu, klibi hızlandırmak
+yerine kesmek anlamına gelirdi). Katalog isteği başarısız olursa
+(örn. geçici bir ağ hatası) sessizce eski davranışa (tam hedef süre)
+geri dönüyor, üretimi asla bloklamıyor.
+
+Ayrı bir kod incelemesiyle doğrulandı ki Remotion render tarafı zaten
+her video öğesini `<Sequence durationInFrames={item.duration_frames}>`
+ile sahnenin gerçek süresine kırpıyor (`AdComposition.tsx`) — yani
+`out_us`/ek bir "trim" adımına hiç gerek yok; talep edilen video daha
+uzun gelse bile (örn. CTA için 2.5sn yerine 4sn), timeline zaten yalnızca
+ilk 2.5sn'sini gösteriyor. Bu, kodun geri kalanına dokunulmadan yalnızca
+istek süresini düzeltmenin yeterli olduğu anlamına geliyordu.
+
+Birim testleri eklendi (`test_generation_service.py`, 3 test): desteklenmeyen
+tam süre → en yakın büyük desteklenen süre istendiği, zaten desteklenen
+tam süre → aynen istendiği, katalog erişimi başarısız → eski davranışa
+(tam hedef süre) düşüldüğü.
+
+`pytest -q`: **254 passed, 11 deselected**.
