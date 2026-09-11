@@ -27,6 +27,10 @@ class ShotLocksPatch(BaseModel):
     timing: bool | None = None
 
 
+class ShotCaptionPatch(BaseModel):
+    caption_text: str | None = None
+
+
 class ShotOut(BaseModel):
     id: str
     order_index: int
@@ -120,6 +124,20 @@ def update_shot_locks(
     locks = body.model_dump(exclude_none=True)
     try:
         shot = revisions_service.set_shot_locks(session, project_id, shot_id, locks)
+    except ServiceError as exc:
+        return error_response(exc)
+    return _shot_out(shot)
+
+
+@router.patch("/projects/{project_id}/shots/{shot_id}/caption", response_model=ShotOut)
+def update_shot_caption(
+    project_id: str, shot_id: str, body: ShotCaptionPatch, session: Session = Depends(get_session)
+):
+    """Spec §5.3 "altyazı düzeltme": manually correct a shot's burned-in
+    caption text in place."""
+
+    try:
+        shot = revisions_service.set_shot_caption(session, project_id, shot_id, body.caption_text)
     except ServiceError as exc:
         return error_response(exc)
     return _shot_out(shot)

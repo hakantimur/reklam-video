@@ -233,6 +233,12 @@ export const api = {
       body: JSON.stringify(locks),
     }),
 
+  updateShotCaption: (projectId: string, shotId: string, captionText: string | null) =>
+    request<PlanShot>(`/projects/${projectId}/shots/${shotId}/caption`, {
+      method: "PATCH",
+      body: JSON.stringify({ caption_text: captionText }),
+    }),
+
   createVariation: (
     projectId: string,
     revisionId: string,

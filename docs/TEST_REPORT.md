@@ -780,3 +780,28 @@ tavan, gerçek bir settlement sonrası doğru düşme, brief'siz projede
 `null` tavan.
 
 `npm run build` temiz. `pytest -q`: **229 passed, 11 deselected**.
+
+## Altyazı düzeltme (2026-09-11, sekizinci tur devamı)
+
+Spec §5.3'ün editör zorunlu işlemlerinden biri: "altyazı düzeltme". Bir
+sahnenin `caption_text`'i saf bir metin alanı (Asset işaretçisi değil,
+Take gibi bir taşıma sorunu yok) olduğundan, `select_take`/`set_shot_locks`
+ile aynı "yerinde güncelle, yeni revizyon açma" deseniyle
+`set_shot_caption` eklendi — `PATCH /projects/{id}/shots/{shot_id}/caption`.
+Hiçbir LLM çağrısı yapmıyor, tamamen ücretsiz. Senaryo ekranındaki her
+sahne kartına düzenlenebilir bir metin alanı + "Kaydet" düğmesi eklendi.
+
+**Canlı kanıt** (gerçek Synova projesi, Hook sahnesi):
+1. `PATCH .../caption {"caption_text": "CANLI DUZELTME TESTI - ..."}` →
+   `200`, yanıt yeni metni doğru yansıttı.
+2. `POST .../timeline/build` yeniden çağrıldı — altyazı kanalındaki
+   `transform.captionText` gerçekten yeni metni gösterdi (diğer iki
+   sahnenin metni değişmedi).
+3. Orijinal metin geri yüklendi (`PATCH .../caption` ile), gerçek proje
+   verisi test öncesi hâline döndürüldü.
+
+Birim testleri eklendi: `test_revisions_service.py` (3 test — üzerine
+yazma, temizleme/`null`, bilinmeyen sahne 404), `test_revisions_api.py`
+(2 test).
+
+`npm run build` temiz. `pytest -q`: **234 passed, 11 deselected**.

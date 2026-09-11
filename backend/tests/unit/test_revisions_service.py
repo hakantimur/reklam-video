@@ -431,3 +431,33 @@ def test_set_shot_locks_rejects_a_shot_from_another_project(db_session):
 
     with pytest.raises(NotFoundError):
         revisions_service.set_shot_locks(db_session, project_b.id, shots_a[0].id, {"visual": True})
+
+
+def test_set_shot_caption_overwrites_the_caption_text(db_session):
+    project, revision, shots = _setup_base_revision(
+        db_session, shot_kwargs_list=[{"source_type": "ai_generated", "purpose": "Hook", "target_frames": 90}]
+    )
+    shot = shots[0]
+
+    updated = revisions_service.set_shot_caption(db_session, project.id, shot.id, "Duzeltilmis yazi")
+
+    assert updated.caption_text == "Duzeltilmis yazi"
+
+
+def test_set_shot_caption_can_clear_the_caption(db_session):
+    project, revision, shots = _setup_base_revision(
+        db_session,
+        shot_kwargs_list=[{"source_type": "ai_generated", "purpose": "Hook", "target_frames": 90, "caption_text": "Eski yazi"}],
+    )
+    shot = shots[0]
+
+    updated = revisions_service.set_shot_caption(db_session, project.id, shot.id, None)
+
+    assert updated.caption_text is None
+
+
+def test_set_shot_caption_unknown_shot_is_404(db_session):
+    project = projects_service.create_project(db_session, name="Altyazi Testi Projesi")
+
+    with pytest.raises(NotFoundError):
+        revisions_service.set_shot_caption(db_session, project.id, "does-not-exist", "x")

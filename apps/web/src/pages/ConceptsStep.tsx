@@ -322,6 +322,13 @@ function ShotCard({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", projectId] }),
   });
 
+  const [captionDraft, setCaptionDraft] = useState(shot.caption_text ?? "");
+  const updateCaption = useMutation({
+    mutationFn: (text: string) => api.updateShotCaption(projectId, shot.id, text.trim() ? text : null),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plan", projectId] }),
+  });
+  const captionDirty = captionDraft !== (shot.caption_text ?? "");
+
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-slate-700 bg-surface/60 p-3">
       <div className="flex items-center justify-between text-xs">
@@ -334,9 +341,28 @@ function ShotCard({
       {shot.desired_event ? (
         <p className="text-xs text-slate-500">Beklenen olay: {shot.desired_event}</p>
       ) : null}
-      {shot.caption_text ? (
-        <p className="text-xs text-slate-400">Ekran yazısı: “{shot.caption_text}”</p>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={captionDraft}
+          onChange={(e) => setCaptionDraft(e.target.value)}
+          placeholder="Ekran yazısı (altyazı)…"
+          className="w-full rounded-md border border-slate-600 bg-bg px-2 py-1 text-xs text-slate-100 placeholder:text-slate-600"
+        />
+        <button
+          type="button"
+          onClick={() => updateCaption.mutate(captionDraft)}
+          disabled={!captionDirty || updateCaption.isPending}
+          className="shrink-0 rounded-md border border-accent px-2 py-1 text-[10px] font-semibold text-accent transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {updateCaption.isPending ? "Kaydediliyor…" : "Kaydet"}
+        </button>
+      </div>
+      {updateCaption.isError ? (
+        <ErrorBanner title="Yazı kaydedilemedi" message={describeApiError(updateCaption.error)} />
       ) : null}
+
       {shot.voice_text ? <p className="text-xs text-slate-400">Seslendirme: “{shot.voice_text}”</p> : null}
 
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-800 pt-2">

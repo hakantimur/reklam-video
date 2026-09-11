@@ -88,6 +88,16 @@ def _get_revision(session: Session, project_id: str, revision_id: str) -> Revisi
     return revision
 
 
+def _get_shot_in_project(session: Session, project_id: str, shot_id: str) -> Shot:
+    shot = session.get(Shot, shot_id)
+    if shot is None:
+        raise NotFoundError(f"Shot {shot_id} not found", details={"shot_id": shot_id})
+    revision = session.get(Revision, shot.revision_id)
+    if revision is None or revision.project_id != project_id:
+        raise NotFoundError(f"Shot {shot_id} not found for this project", details={"shot_id": shot_id})
+    return shot
+
+
 def set_shot_locks(session: Session, project_id: str, shot_id: str, locks: dict[str, bool]) -> Shot:
     """Toggle one or more of a shot's `visual`/`voice`/`caption`/`timing`
     locks in place (spec §5.3 "sahne kilidi, ses kilidi") — this mutates
@@ -97,16 +107,26 @@ def set_shot_locks(session: Session, project_id: str, shot_id: str, locks: dict[
     variations should treat this shot, not content the version history
     needs to preserve a snapshot of."""
 
-    shot = session.get(Shot, shot_id)
-    if shot is None:
-        raise NotFoundError(f"Shot {shot_id} not found", details={"shot_id": shot_id})
-    revision = session.get(Revision, shot.revision_id)
-    if revision is None or revision.project_id != project_id:
-        raise NotFoundError(f"Shot {shot_id} not found for this project", details={"shot_id": shot_id})
-
+    shot = _get_shot_in_project(session, project_id, shot_id)
     current = dict(shot.locks_json or {})
     current.update(locks)
     shot.locks_json = current
+    session.commit()
+    session.refresh(shot)
+    return shot
+
+
+def set_shot_caption(session: Session, project_id: str, shot_id: str, caption_text: str | None) -> Shot:
+    """Spec §5.3 "altyazı düzeltme": a direct manual correction to a shot's
+    burned-in caption, applied in place like a lock toggle — a correction
+    is a deliberate user edit, not a risk a `caption` lock needs to guard
+    against (that lock only gates the director agent's own free-text
+    variations). Takes effect the next time `timeline.build_timeline`
+    (and therefore a preview/export render) runs, same as any other Shot
+    field edit."""
+
+    shot = _get_shot_in_project(session, project_id, shot_id)
+    shot.caption_text = caption_text
     session.commit()
     session.refresh(shot)
     return shot

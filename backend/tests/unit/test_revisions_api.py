@@ -61,3 +61,23 @@ def test_update_shot_locks_unknown_shot_is_404(api_client):
         f"/api/v1/projects/{project['id']}/shots/does-not-exist/locks", json={"visual": True}
     )
     assert response.status_code == 404
+
+
+def test_update_shot_caption_overwrites_the_caption_text(api_client, db_session):
+    project = api_client.post("/api/v1/projects", json={"name": "Altyazi API Testi"}).json()
+    shot = _setup_shot(db_session, project["id"])
+
+    response = api_client.patch(
+        f"/api/v1/projects/{project['id']}/shots/{shot.id}/caption", json={"caption_text": "Duzeltilmis"}
+    )
+    assert response.status_code == 200
+    assert response.json()["caption_text"] == "Duzeltilmis"
+
+
+def test_update_shot_caption_unknown_shot_is_404(api_client):
+    project = api_client.post("/api/v1/projects", json={"name": "Altyazi 404 Testi"}).json()
+
+    response = api_client.patch(
+        f"/api/v1/projects/{project['id']}/shots/does-not-exist/caption", json={"caption_text": "x"}
+    )
+    assert response.status_code == 404
