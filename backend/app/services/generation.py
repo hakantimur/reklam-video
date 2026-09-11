@@ -196,6 +196,12 @@ def generate_voice_asset(
     destination = audio_dir / f"shot-{shot.id}-voice-{uuid.uuid4().hex[:8]}.mp3"
     destination.write_bytes(audio_bytes)
 
+    try:
+        probe = technical_qc.probe_media(destination)
+        duration_us = int(probe.duration_s * 1_000_000) if probe.duration_s else None
+    except technical_qc.ToolMissingError:
+        duration_us = None
+
     asset = Asset(
         project_id=project_id,
         type="audio",
@@ -203,6 +209,7 @@ def generate_voice_asset(
         relative_path=str(destination.relative_to(Path(project.root_path))),
         sha256=hashlib.sha256(audio_bytes).hexdigest(),
         byte_size=len(audio_bytes),
+        duration_us=duration_us,
         metadata_json={
             "shot_id": shot.id,
             "role": "voice_over",

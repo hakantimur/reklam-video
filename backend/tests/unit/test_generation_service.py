@@ -159,9 +159,17 @@ class _FakeSpeechProvider:
         return self.audio_bytes
 
 
-def test_generate_voice_asset_persists_audio(db_session):
+def test_generate_voice_asset_persists_audio(monkeypatch, db_session):
     project_id, shot_id = _setup_shot(db_session, source_type="composed", voice_text="Şimdi indir!")
     provider = _FakeSpeechProvider()
+    monkeypatch.setattr(
+        generation_service.technical_qc,
+        "probe_media",
+        lambda path: technical_qc.MediaProbe(
+            duration_s=4.46, width=None, height=None, has_video=False, has_audio=True,
+            video_codec=None, audio_codec="mp3",
+        ),
+    )
 
     asset = generation_service.generate_voice_asset(
         db_session, project_id, shot_id, speech_provider=provider, voice_id="voice-1"
@@ -169,8 +177,24 @@ def test_generate_voice_asset_persists_audio(db_session):
 
     assert asset.type == "audio"
     assert asset.byte_size == len(provider.audio_bytes)
+    assert asset.duration_us == 4_460_000
     assert asset.metadata_json["role"] == "voice_over"
     assert provider.calls == [("Şimdi indir!", "voice-1", "tr")]
+
+
+def test_generate_voice_asset_duration_is_none_when_probe_fails(monkeypatch, db_session):
+    project_id, shot_id = _setup_shot(db_session, source_type="composed", voice_text="Şimdi indir!")
+
+    def fake_probe(path):
+        raise technical_qc.ToolMissingError("ffprobe_failed: garbage input")
+
+    monkeypatch.setattr(generation_service.technical_qc, "probe_media", fake_probe)
+
+    asset = generation_service.generate_voice_asset(
+        db_session, project_id, shot_id, speech_provider=_FakeSpeechProvider(), voice_id="voice-1"
+    )
+
+    assert asset.duration_us is None
 
 
 def test_generate_voice_asset_requires_voice_text(db_session):

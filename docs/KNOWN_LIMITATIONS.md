@@ -93,11 +93,12 @@ liste boşalana kadar kullanılmaz.
    `Asset.metadata_json.shot_id`'ye bağlı.** Bu, sorgulanabilir ve doğru
    çalışıyor, ama şemada birinci sınıf bir ilişki değil — Safha 9/10'da
    timeline'a bağlarken bu sözleşmeye dikkat edilmeli.
-5. **Seslendirme Asset'lerinde `duration_us` hesaplanmıyor.**
-   `generate_voice_asset` ElevenLabs'ten gelen mp3 bayt dizisini doğrudan
-   diske yazıyor, süresini probe etmiyor — Malzemeler ekranında bu yüzden
-   ses dosyaları için süre "—" görünüyor (dosyanın kendisi gerçek ve
-   çalıyor, yalnızca metadata eksik).
+5. ~~Seslendirme Asset'lerinde `duration_us` hesaplanmıyor~~ — **çözüldü
+   (2026-09-11, beşinci tur)**: `generate_voice_asset` artık gerçek
+   `ffprobe` ile süreyi ölçüyor (probe başarısız olursa `None`'a düşüyor,
+   asla uydurmuyor). Gerçek bir seslendirme yeniden üretilerek CANLI
+   doğrulandı: 48,527 baytlık gerçek MP3 için `duration_us=2,972,154`
+   (2.97sn) doğru şekilde kaydedildi.
 
 ## Safha 9 — gerçek timeline + render (2026-09-11)
 
