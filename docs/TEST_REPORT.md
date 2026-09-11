@@ -83,6 +83,38 @@ ve tam paket (`116 passed`) tekrar doğrulandı.
 - Malzemeler/İşler ekranları backend'de karşılık gelen endpoint olmadığı
   için iskelet düzeyinde (bilinçli, açıkça işaretli).
 
+## Safha 5 canlı keşif kanıtı (2026-09-11, gerçek Synova + gerçek OpenRouter anahtarı)
+
+`POST /projects/{id}/discover` → arka plan worker'da `discover` job'u çalıştı
+(`emulator-5554`, paket `com.example.synova.dev`, model
+`anthropic/claude-haiku-4.5`, `max_actions=6`).
+
+**Deneme 1 — güvenlik davranışı doğrulandı:** Emülatör önceki çökme/yeniden
+başlatma döngüsünden dolayı gerçek bir Android "System UI isn't responding"
+(ANR) diyaloğu gösteriyordu. Operatör gerçek ekran görüntüsünü görüp bunu
+doğru sınıflandırdı ve `request_takeover` eylemini seçti; iş
+`DiscoveryTakeoverRequested` ile `failed` oldu, GameProfile YAZILMADI. Bu,
+spec §11.8'in ("beklenmeyen ekranda duraklat, gizli otomatik onay yok") tam
+istediği davranış — sahte başarı yerine dürüst engel raporlandı.
+
+**Deneme 2 — gerçek keşif başarılı:** ANR diyaloğu elle kapatıldıktan sonra
+aynı iş tekrar tetiklendi. Sonuç (`job.result_json`):
+
+```
+mechanic_summary: "Synova is a pattern memory game where players observe a
+sequence of cells lighting up in a 4x4 grid, then reproduce that exact
+sequence by tapping the cells in the correct order. The game progresses
+through multiple rounds with increasing difficulty, tracking performance
+as a baseline calibration for brain training."
+confidence: 0.72
+```
+
+`game_profiles` ve `device_profiles` tablolarına gerçekten yazıldı
+(doğrudan DB sorgusuyla doğrulandı). "4x4 grid" detayı brief/concept
+metninde hiç geçmiyor — bu, modelin gerçekten ekranı gözlemleyerek
+öğrendiğinin kanıtı, brief'i tekrarlaması değil. Toplam süre ~43 saniye,
+6 eylem + 1 sentez çağrısı ile.
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/
