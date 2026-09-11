@@ -352,6 +352,25 @@ harikası keşfedin.") doğru konumda ve okunaklı şekilde görünüyor.
 
 `pytest -q`: 189 passed, 11 deselected (mevcut bir test güncellendi).
 
+## Malzemeler + İşler ekranları gerçek veriye bağlandı (2026-09-11)
+
+`GET /projects/{id}/jobs` eklendi (3 yeni test — `test_jobs_list_api.py`,
+192 passed). `MaterialsPage`/`JobsPage` artık aktif projenin gerçek
+verisini gösteriyor, sahte iskelet değil. Gerçek Synova projesinde
+tarayıcıda CANLI denendi:
+
+- **Malzemeler:** tüm gecenin gerçek çıktıları tek listede — 2 gerçek
+  Synova oynanış kaydı, 2 gerçek Google Veo AI sahnesi, 1 gerçek
+  ElevenLabs seslendirmesi, 3 gerçek önizleme/export render'ı — hepsi
+  gerçek `<video>`/`<audio>` oynatıcılarıyla.
+- **İşler:** tüm gecenin gerçek job geçmişi — discover/capture_shot/
+  generate_ai_scene/generate_voice/render_preview job'ları, gerçek
+  süreleriyle (ör. "Önizleme render — 3 dk 45 sn") ve gerçek bir
+  başarısızlık (`Keşif — Başarısız — handler_error`, Safha 5'in canlı
+  kontrol-devri testinden kalan gerçek kanıt).
+
+`pytest -q`: 192 passed, 11 deselected.
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

@@ -84,6 +84,11 @@ liste boşalana kadar kullanılmaz.
    `Asset.metadata_json.shot_id`'ye bağlı.** Bu, sorgulanabilir ve doğru
    çalışıyor, ama şemada birinci sınıf bir ilişki değil — Safha 9/10'da
    timeline'a bağlarken bu sözleşmeye dikkat edilmeli.
+5. **Seslendirme Asset'lerinde `duration_us` hesaplanmıyor.**
+   `generate_voice_asset` ElevenLabs'ten gelen mp3 bayt dizisini doğrudan
+   diske yazıyor, süresini probe etmiyor — Malzemeler ekranında bu yüzden
+   ses dosyaları için süre "—" görünüyor (dosyanın kendisi gerçek ve
+   çalıyor, yalnızca metadata eksik).
 
 ## Safha 9 — gerçek timeline + render (2026-09-11)
 
@@ -182,10 +187,18 @@ liste boşalana kadar kullanılmaz.
    spec §7.2 (`briefs`, `brand_profiles` tabloları) ve §4.2'den türetildi;
    backend gerçek `PUT /projects/{id}/brief` şemasını uyguladığında alan
    adları/gruplaması doğrulanıp gerekirse güncellenmeli.
-3. **Malzemeler ve İşler ekranları bilinçli olarak iskelet düzeyinde.**
-   Karşılık gelen backend uç noktaları (`GET /projects/{id}/assets`, iş
-   listesi) yok; bu ekranlar sahte satır göstermek yerine planlanan
-   sütunları ve açık "henüz uygulanmadı" durumunu gösteriyor.
+3. ~~Malzemeler ve İşler ekranları bilinçli olarak iskelet düzeyinde~~ —
+   **çözüldü (2026-09-11, üçüncü tur)**: `GET /projects/{id}/jobs` eklendi
+   (liste yoktu, yalnızca tekil `GET /jobs/{id}` vardı); her iki ekran da
+   artık aktif projenin gerçek verisini gösteriyor — Malzemeler gerçek
+   video/ses önizlemeleriyle (tarayıcıda CANLI denendi, tüm gecenin gerçek
+   çıktıları: gameplay kayıtları, AI sahneleri, seslendirme, önizleme/
+   export render'ları göründü), İşler gerçek iş geçmişiyle (tür/durum/
+   geçen süre/hata + duraklat/devam ettir/iptal, tüm gecenin gerçek
+   discover/capture/generate/render job'ları göründü, biri gerçek bir
+   `handler_error` ile). Maliyet sütunu hâlâ bağlanmadı — `BudgetEntry`
+   modeli var ama hiçbir job handler'ı (discover/capture/generate/render/
+   export) onu yazmıyor.
 4. **npm audit: 4 orta/yüksek risk uyarısı** (`react-router-dom` açık
    yönlendirme, `esbuild` dev-server isteği sızıntısı). İkisi de yalnızca
    majör sürüm atlamasıyla (`react-router-dom` 6→7, `vite` 5→8) düzeltiliyor;

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.errors import error_response
@@ -9,6 +10,18 @@ from app.schemas.job import JobOut
 from app.services.errors import NotFoundError, ServiceError
 
 router = APIRouter(tags=["jobs"])
+
+
+@router.get("/projects/{project_id}/jobs", response_model=list[JobOut])
+def list_jobs(project_id: str, state: str | None = None, session: Session = Depends(get_session)):
+    """Spec §5.2 "İşler" ekranı: kalıcı iş geçmişi, en yeni önce."""
+
+    query = select(Job).where(Job.project_id == project_id)
+    if state is not None:
+        query = query.where(Job.state == state)
+    query = query.order_by(Job.created_at.desc())
+    jobs = session.execute(query).scalars().all()
+    return [JobOut.model_validate(j) for j in jobs]
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)

@@ -109,6 +109,8 @@ export interface Job {
   state: string;
   result_json: Record<string, unknown>;
   error_code: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // --- plan (spec §10.2 Script+ShotPlan, §8.1 POST/GET /projects/{id}/plan) ---

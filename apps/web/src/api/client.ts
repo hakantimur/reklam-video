@@ -230,6 +230,13 @@ export const api = {
 
   getJob: (jobId: string) => request<Job>(`/jobs/${jobId}`),
 
+  listJobs: (projectId: string, state?: string) =>
+    request<Job[]>(`/projects/${projectId}/jobs${state ? `?state=${state}` : ""}`),
+
+  pauseJob: (jobId: string) => request<Job>(`/jobs/${jobId}/pause`, { method: "POST" }),
+  resumeJob: (jobId: string) => request<Job>(`/jobs/${jobId}/resume`, { method: "POST" }),
+  cancelJob: (jobId: string) => request<Job>(`/jobs/${jobId}/cancel`, { method: "POST" }),
+
   startCapture: (projectId: string, shotId: string, serial: string) =>
     request<CaptureJob>(`/projects/${projectId}/shots/${shotId}/capture`, {
       method: "POST",
