@@ -17,6 +17,7 @@ apps/web/.vite/
 apps/web/*.tsbuildinfo
 apps/render/out/
 apps/render/dist/
+apps/render/public/
 .turbo/
 
 # Build / packaging

@@ -178,6 +178,19 @@ export const RemotionRoot: React.FC = () => {
       width={SAMPLE_TIMELINE.canvas.width}
       height={SAMPLE_TIMELINE.canvas.height}
       defaultProps={{ timeline: SAMPLE_TIMELINE }}
+      // Safha 9: `remotion render ... --props=real-timeline.json` overrides
+      // `defaultProps.timeline` with a real project's Timeline -- this is
+      // what makes the actual duration/fps/canvas follow that real data
+      // instead of staying pinned to the sample's numbers.
+      calculateMetadata={({ props }) => {
+        const timeline = (props as AdCompositionProps).timeline;
+        return {
+          durationInFrames: timeline.duration_frames,
+          fps: Math.round(timeline.fps.num / timeline.fps.den),
+          width: timeline.canvas.width,
+          height: timeline.canvas.height,
+        };
+      }}
     />
   );
 };

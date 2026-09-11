@@ -1,4 +1,17 @@
-from app.api import assets, briefs, capture, concepts, discover, events, generation, jobs, plans, projects, settings
+from app.api import (
+    assets,
+    briefs,
+    capture,
+    concepts,
+    discover,
+    events,
+    generation,
+    jobs,
+    plans,
+    projects,
+    render,
+    settings,
+)
 
 # The coordinator mounts these onto the shared FastAPI app in `app/main.py`
 # (e.g. `for r in ROUTERS: app.include_router(r, prefix="/api/v1")`), the
@@ -16,6 +29,7 @@ ROUTERS = [
     discover.router,
     capture.router,
     generation.router,
+    render.router,
 ]
 
 __all__ = ["ROUTERS"]

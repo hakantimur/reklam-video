@@ -83,6 +83,26 @@ liste boşalana kadar kullanılmaz.
    çalışıyor, ama şemada birinci sınıf bir ilişki değil — Safha 9/10'da
    timeline'a bağlarken bu sözleşmeye dikkat edilmeli.
 
+## Safha 9 — gerçek timeline + render (2026-09-11)
+
+1. **Altyazı (subtitle) track'i hâlâ pozisyon placeholder'ı.** `caption_text`
+   bir sahnede varsa timeline'a doğru start/duration ile ekleniyor, ama
+   `AdComposition`'da hâlâ `[altyazı placeholder — item-id]` yazısı
+   gösteriyor — gerçek metni ekrana basmak bu turda kapsam dışı kaldı.
+2. **Ses karıştırma/kısma (ducking) yok.** Gameplay/AI klibinin kendi
+   gömülü sesi (varsa) ve ayrı seslendirme aynı anda, hiçbir seviye
+   ayarlaması olmadan çalıyor.
+3. **Canvas sabit 1080x1920.** `placement_id`'den gerçek bir en-boy oranı
+   türetilmiyor; farklı native çözünürlükteki kaynaklar (gameplay
+   1080x2400, AI sahne 720x1280) `object-fit: cover` ile kırpılarak
+   sığdırılıyor — kasıtlı bir kırpma/kompozisyon aracı yok.
+4. **Render senkron ve tek seferlik.** `render_preview` job'u tüm render
+   süresince (dakikalar sürebilir) worker thread'ini bloke ediyor; ilerleme
+   yüzdesi raporlanmıyor, sadece queued/running/succeeded/failed durumu var.
+5. **Editör arayüzü (sahne sırasını değiştirme, crop, manuel senkron) yok**
+   — timeline tamamen sunucu tarafında, sahne sırasına göre otomatik
+   üretiliyor.
+
 ## Frontend (apps/web) — Safha 1 UI iskeleti (2026-09-11, agent/frontend-web)
 
 1. **Backend'in çoğu uç noktası henüz yok.** `backend/app/main.py` şu an

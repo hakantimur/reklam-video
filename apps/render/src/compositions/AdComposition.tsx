@@ -1,7 +1,10 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
+  OffthreadVideo,
   Sequence,
+  staticFile,
   useVideoConfig,
   interpolate,
   useCurrentFrame,
@@ -102,6 +105,43 @@ function VideoPlaceholder({ item }: { item: TrackItem }) {
       </div>
     </AbsoluteFill>
   );
+}
+
+/** Safha 9: a real staged file (`transform.realFile`) always wins over the
+ * placeholder — the placeholder exists only for shots/voice-overs that
+ * genuinely have no take/asset yet, never as a stand-in once one exists. */
+function VideoItemRenderer({ item }: { item: TrackItem }) {
+  const { fps } = useVideoConfig();
+  const realFile = item.transform?.realFile;
+  if (!realFile) {
+    return <VideoPlaceholder item={item} />;
+  }
+  const startFromFrames = item.source_in_us
+    ? Math.round((item.source_in_us / 1_000_000) * fps)
+    : 0;
+  return (
+    <OffthreadVideo
+      src={staticFile(realFile)}
+      startFrom={startFromFrames}
+      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+    />
+  );
+}
+
+function AudioItemRenderer({
+  item,
+  trackId,
+  rowIndex,
+}: {
+  item: TrackItem;
+  trackId: string;
+  rowIndex: number;
+}) {
+  const realFile = item.transform?.realFile;
+  if (!realFile) {
+    return <AudioPlaceholder item={item} trackId={trackId} rowIndex={rowIndex} />;
+  }
+  return <Audio src={staticFile(realFile)} volume={item.gain ?? 1} />;
 }
 
 function AudioPlaceholder({
@@ -406,9 +446,9 @@ function TrackItemRenderer({
 }) {
   switch (track.kind) {
     case "video":
-      return <VideoPlaceholder item={item} />;
+      return <VideoItemRenderer item={item} />;
     case "audio":
-      return <AudioPlaceholder item={item} trackId={track.id} rowIndex={audioRowIndex} />;
+      return <AudioItemRenderer item={item} trackId={track.id} rowIndex={audioRowIndex} />;
     case "subtitle":
       return <SubtitlePlaceholder item={item} />;
     case "graphics":

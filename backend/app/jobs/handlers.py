@@ -176,6 +176,16 @@ def _generate_voice(session: Session, job: Job) -> dict:
     return {"asset_id": asset.id, "byte_size": asset.byte_size}
 
 
+@register_handler("render_preview")
+def _render_preview(session: Session, job: Job) -> dict:
+    """Spec §8.1 POST /projects/{id}/render/preview (Safha 9)."""
+
+    from app.services import render as render_service
+
+    asset = render_service.render_preview_job(session, job.project_id)
+    return {"asset_id": asset.id, "byte_size": asset.byte_size, "duration_us": asset.duration_us}
+
+
 def run_worker_once(
     session: Session, *, queue: JobQueue = job_queue, kinds: list[str] | None = None
 ) -> Job | None:

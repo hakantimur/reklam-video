@@ -70,6 +70,14 @@ export interface TrackItemRenderExt {
   placeholderColor?: string;
   /** Only meaningful for graphics-track items. */
   graphic?: GraphicSpec;
+  /**
+   * Safha 9: filename of a real asset staged into `apps/render/public/` by
+   * `app/services/render.py` before invoking `remotion render` (Remotion's
+   * documented way to serve a local file via `staticFile()`). When absent,
+   * the item still renders — as its placeholder, never as a silent gap —
+   * so an unfinished timeline is always visibly unfinished.
+   */
+  realFile?: string;
   [key: string]: unknown;
 }
 

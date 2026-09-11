@@ -203,6 +203,36 @@ hem de ayrı bir seslendirmeye sahip olabilir (spec'te ayrı bir
 `pytest -q`: 162 passed, 11 deselected (13 yeni test:
 `test_generation_service.py` + `test_generation_api.py`).
 
+## Safha 9 canlı render kanıtı (2026-09-11, gerçek karma render)
+
+`POST /projects/{id}/timeline/build`, gerçek Synova projesinin gerçek
+6 sahnelik ShotPlan'ından gerçek bir Timeline ürettti — 3 sahnede o ana
+kadar çekilmiş/üretilmiş gerçek Take/Asset'ler referanslandı, kalan 3
+sahne dürüstçe `asset_id: null` bırakıldı (uydurma yok). Toplam
+`duration_frames: 600` brief'in `target_frames`'iyle birebir eşleşti.
+
+`POST /projects/{id}/render/preview` bu timeline'ı gerçekten render etti:
+
+```
+Asset: renders/preview/preview-....mp4, 4,929,840 bytes
+ffprobe (bagimsiz dogrulama): h264 1080x1920 + aac audio, duration=20.053333s
+Teknik QC: probe=pass, decode=pass, scene_detect=pass, blank_or_frozen=pass
+```
+
+Koordinatör tarafından bağımsız olarak üç kare çıkarılıp görsel olarak
+incelendi:
+
+- **t=2sn:** gerçek Google Veo AI sahnesi (renkli bulmaca/hafıza oyunları
+  gösteren bir telefon tutan el) gerçekten oynuyor.
+- **t=6sn:** gerçek Synova oynanış kaydı ("Repeat the pattern", "Round 1
+  of 5", 4x4 grid) doğru zamanlamada kesiliyor.
+- **t=11sn:** henüz çekilmemiş üçüncü oynanış sahnesi için sistem dürüstçe
+  kırmızı "PLACEHOLDER" kartı gösteriyor — sahte/eksik veri asla gerçek
+  içerik gibi sunulmuyor.
+
+`pytest -q`: 172 passed, 11 deselected (10 yeni test:
+`test_timeline_service.py`, `test_render_service.py`, `test_render_api.py`).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/
