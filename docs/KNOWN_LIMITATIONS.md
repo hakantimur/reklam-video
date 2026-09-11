@@ -362,4 +362,57 @@ kullanıcı tarafından izlendi. Doğrulanan sorunlar:
 5. Altyazı rozeti kısa metinlerde ("Şimdi İndir") konumlandırma
    tutarsızlığı. **Henüz düzeltilmedi**, kapsam dışı.
 
+## KRİTİK: Tüm proje boyunca yanlış/eski bir build kullanılmış (2026-09-11, onikinci tur)
+
+Kullanıcı düzeltilmiş örnek videoyu izledikten sonra "bu görüntüler de
+benim değil" dedi — reference-image grounding düzeltmesi teknik olarak
+çalışmasına rağmen. Araştırma gerçek kök nedeni ortaya çıkardı:
+
+Emülatörde (`emulator-5554`) şimdiye kadar yüklü olan paket
+`com.example.synova.dev`, `versionName=0.1.0`, 2026-09-06'da kurulmuş —
+markasız, jenerik bir dev/placeholder build. Masaüstünde duran gerçek
+`.aab` (`Desktop/SYNOVA_yeni_surum/SYNOVA-0.1.1-2.aab`, `versionName
+0.1.1`, `versionCode 2`, gerçek paket adı `com.noriloop.synova`) hiçbir
+zaman bu emülatöre kurulmamıştı. Bu, projenin EN BAŞINDAN BERİ — ilk
+gerçek gameplay yakalamasından (`device_profiles`/`game_profiles`
+tablosundaki `2026-09-11 05:50`'den itibaren tüm kayıtlar) bugüne kadar
+— yanlış uygulamaya karşı çalıştığı anlamına geliyor. `game_profiles`
+tablosundaki 3 ayrı keşif kaydı da yalnızca tek bir mekanik
+tanımlıyor ("pattern-recall memory game... 4x4 grid") — oysa gerçek
+uygulamanın onboarding akışı Memory/Attention/Logic/Speed/Math gibi
+BEŞ farklı oyun kategorisi olduğunu gösteriyor (bkz. gerçek uygulamanın
+"What do you want to work on?" ekranı). Yani proje boyunca hem "gerçek"
+gameplay çekimleri hem de bunlardan türetilen AI grounding referansları
+hep AYNI tek mini-oyunu (Pattern Memory / "Repeat the pattern") tekrar
+tekrar gösterdi — kullanıcının "sekiz farklı oyun" talebine rağmen.
+
+**Şu ana kadar yapılan (ücretsiz kısım, düzeltildi):**
+- Gerçek `.aab`'den `bundletool` ile universal APK üretildi, yanlış
+  build kaldırılıp gerçek `com.noriloop.synova` (v0.1.1) emülatöre
+  kuruldu ve canlı doğrulandı (gerçek splash ekranı: "SYNOVA — Train
+  your mind, five minutes a day", gerçek logo/renk paleti).
+- `device_profiles.package_id` veritabanında `com.noriloop.synova`
+  olarak güncellendi (bir `discover` job'unun kısmi/başarısız
+  çalışması sırasında flush edildi, OpenRouter hatasından ETKİLENMEDEN
+  kalıcı oldu — doğrudan DB'den doğrulandı).
+
+**BLOKE (kullanıcı eylemi gerekiyor):** Gerçek uygulamayı yeniden
+keşfetmek (`discover` job'u, görü tabanlı ajan) ve gerçek/çeşitli
+gameplay'i yeniden yakalamak (`capture` job'u) OpenRouter'a gerçek
+sohbet/vision API çağrıları gerektiriyor. İki deneme de gerçek `402`
+hatasıyla başarısız oldu: `GET /credits` ile doğrudan kontrol edildi —
+hesabın `total_credits: 15`, `total_usage: 15.15` — yani gerçek bakiye
+tükenmiş. Bu geçici bir "in-flight" hatası değil, gerçek bir kredi
+sınırı. **Kullanıcının OpenRouter hesabına gerçek bakiye eklemesi
+gerekiyor** (https://openrouter.ai/settings/credits) — bu, doğrudan bir
+para işlemi olduğu için otomatik yapılmadı, kullanıcıya bırakıldı.
+
+Bakiye eklendikten sonra yapılacaklar (sırayla): 1) `discover` job'unu
+gerçek uygulamaya karşı çalıştırıp `game_profiles`'ı gerçek, çeşitli
+oyun modu bilgisiyle güncellemek, 2) 3 gameplay sahnesini gerçek/farklı
+oyun modlarından yeniden yakalamak, 3) AI sahnelerinin grounding
+referanslarını bu yeni çeşitli çekimlerden yeniden üretmek, 4) timeline/
+QA/export'u yeniden çalıştırıp yeni örnek videoyu kullanıcıya
+göndermek.
+
 Bu bölüm ilerledikçe güncellenecektir.

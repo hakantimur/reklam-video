@@ -113,6 +113,31 @@ CTA'daki bozuk/anlamsız uygulama metni, ardışık gameplay çekimlerinin
 donuk görünmesi (tek-tek QC her birini geçiyor), altyazı rozeti
 konumlandırma tutarsızlığı.
 
+## KRİTİK bulgu: proje baştan yanlış build'e karşı çalışmış (2026-09-11, onikinci tur)
+
+Kullanıcı düzeltilmiş videoyu da "bu görüntüler de benim değil" diye
+reddetti. Kök neden bulundu: emülatörde şimdiye kadar kurulu olan
+`com.example.synova.dev` (v0.1.0) markasız/jenerik bir dev build'miş;
+gerçek `.aab` (`SYNOVA-0.1.1-2.aab`, gerçek paket `com.noriloop.synova`,
+v0.1.1) hiç kurulmamıştı. Bu, EN BAŞTAN İTİBAREN tüm gameplay
+yakalamalarının ve bunlardan türeyen AI grounding referanslarının
+yanlış/eksik içerik gösterdiği anlamına geliyor — gerçek uygulamanın
+5 farklı oyun kategorisi (Memory/Attention/Logic/Speed/Math) var,
+oysa proje boyunca hep aynı tek "Pattern Memory" ekranı yakalanmış.
+
+Düzeltilen (ücretsiz) kısım: gerçek `.aab` `bundletool` ile gerçek APK'ya
+çevrildi, emülatöre kuruldu ve canlı doğrulandı (gerçek "SYNOVA" splash
+ekranı); `device_profiles.package_id` veritabanında doğru pakete
+güncellendi.
+
+**BLOKE:** Gerçek uygulamayı yeniden keşfedip çeşitli gameplay'i yeniden
+yakalamak OpenRouter'a gerçek API çağrıları gerektiriyor.
+`GET /credits` ile doğrulandı: hesap bakiyesi tükenmiş
+(`total_credits: 15`, `total_usage: 15.15`). Kullanıcının
+openrouter.ai/settings/credits üzerinden gerçek bakiye eklemesi
+gerekiyor — para işlemi olduğu için otomatik yapılmadı. Ayrıntı ve
+sıradaki adımlar KNOWN_LIMITATIONS.md'de.
+
 ## Safha durumu
 
 | Safha | Konu | Durum | Not |
