@@ -1,4 +1,4 @@
-from app.api import assets, briefs, events, jobs, projects, settings
+from app.api import assets, briefs, concepts, events, jobs, projects, settings
 
 # The coordinator mounts these onto the shared FastAPI app in `app/main.py`
 # (e.g. `for r in ROUTERS: app.include_router(r, prefix="/api/v1")`), the
@@ -11,6 +11,7 @@ ROUTERS = [
     jobs.router,
     settings.router,
     events.router,
+    concepts.router,
 ]
 
 __all__ = ["ROUTERS"]

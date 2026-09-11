@@ -228,6 +228,12 @@ def put_brief(
     return brief
 
 
+def get_brand_profile(session: Session, project_id: str) -> BrandProfile | None:
+    return session.execute(
+        select(BrandProfile).where(BrandProfile.project_id == project_id)
+    ).scalar_one_or_none()
+
+
 def get_latest_brief(session: Session, project_id: str) -> Brief | None:
     return (
         session.execute(

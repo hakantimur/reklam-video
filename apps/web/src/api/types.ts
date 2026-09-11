@@ -74,6 +74,17 @@ export interface BriefResponse extends BriefPayload {
   revision: number;
 }
 
+// --- concepts (spec §10.2 ConceptSet, §8.1 POST/GET /projects/{id}/concepts) ---
+
+export interface Concept {
+  id: string;
+  angle: string;
+  hook: string;
+  rationale: string;
+  claim_refs: string[];
+  selected: boolean;
+}
+
 // --- settings / credentials (spec §8.1 PUT /settings/credentials/{provider}) ---
 
 export type CredentialProvider = "openrouter" | "elevenlabs";

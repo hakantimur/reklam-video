@@ -6,11 +6,14 @@ liste boşalana kadar kullanılmaz.
 
 ## Canlı doğrulama engelleri (2026-09-11 itibarıyla)
 
-1. **OpenRouter API anahtarı yok.** Yönetmen (director), operatör (oyun
-   kontrolü stratejisi), reviewer ve video/TTS üretimi bu anahtara bağlıdır.
-   Anahtar girilene kadar bu akışlar yalnızca mock/contract testleriyle
-   doğrulanabilir; gerçek model çıktısı doğrulanmamıştır.
-2. **ElevenLabs API anahtarı yok (opsiyonel ikinci ses yolu).**
+1. ~~OpenRouter API anahtarı yok~~ — **çözüldü (2026-09-11)**: kullanıcı
+   gerçek anahtarını Ayarlar ekranından girdi, Windows Credential Manager'a
+   kaydedildi. Yönetmen (concept üretimi) bu anahtarla CANLI doğrulandı.
+   Operatör (oyun kontrol stratejisi), reviewer ve video üretimi henüz
+   uygulanmadı (Safha 5/8) — anahtar var ama bu akışlar için kod yok.
+2. ~~ElevenLabs API anahtarı yok~~ — **çözüldü (2026-09-11)**: kullanıcı
+   gerçek anahtarını girdi, `list_voices()` ile canlı doğrulandı (21 ses
+   bulundu). TTS üretimi (synthesize) henüz bir akışa bağlanmadı.
 3. ~~ffmpeg / scrcpy ikilik dosyaları makinede kurulu değildi~~ — **çözüldü
    (2026-09-11)**: `scripts/setup/fetch_binaries.py` ile ffmpeg 9.0.1 ve
    scrcpy v4.1 resmi kaynaklardan sürüm+checksum doğrulamasıyla indirildi,

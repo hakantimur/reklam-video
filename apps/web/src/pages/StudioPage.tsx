@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import { api, describeApiError } from "../api/client";
@@ -7,6 +7,7 @@ import { ErrorBanner } from "../components/common/ErrorBanner";
 import { LoadingState } from "../components/common/LoadingState";
 import { useUIStore } from "../state/uiStore";
 import { BriefForm } from "./BriefForm";
+import { ConceptsStep } from "./ConceptsStep";
 
 interface StepDef {
   key: string;
@@ -15,13 +16,15 @@ interface StepDef {
 }
 
 // Spec §5.1: "Stüdyo adımları: Brief → Keşif → Senaryo → Çekim → Taslak → Düzenle → Çıktı."
-// Bu safhada yalnızca Brief işlevsel; diğerleri sonraki safhalarda eklenecek
-// (bkz. docs/PROGRESS.md). Devre dışı adımlar tıklanabilir sahte buton
-// olarak değil, açık "henüz yok" durumuyla gösteriliyor.
+// Brief ve Senaryo (fikir üretme) işlevsel; diğerleri sonraki safhalarda
+// eklenecek (bkz. docs/PROGRESS.md). Keşif henüz yok — Senaryo bu yüzden
+// oyun keşfi olmadan, yalnızca brief'ten fikir üretir ve bunu açıkça belirtir.
+// Devre dışı adımlar tıklanabilir sahte buton olarak değil, açık "henüz yok"
+// durumuyla gösteriliyor.
 const STEPS: StepDef[] = [
   { key: "brief", label: "Brief", enabled: true },
   { key: "kesif", label: "Keşif", enabled: false },
-  { key: "senaryo", label: "Senaryo", enabled: false },
+  { key: "senaryo", label: "Senaryo", enabled: true },
   { key: "cekim", label: "Çekim", enabled: false },
   { key: "taslak", label: "Taslak", enabled: false },
   { key: "duzenle", label: "Düzenle", enabled: false },
@@ -59,6 +62,7 @@ export function StudioPage() {
         <Routes>
           <Route path="/" element={<Navigate to="brief" replace />} />
           <Route path="brief" element={<BriefStep projectId={activeProjectId} />} />
+          <Route path="senaryo" element={<ConceptsStep projectId={activeProjectId} />} />
           <Route path="*" element={<Navigate to="brief" replace />} />
         </Routes>
       )}
@@ -69,24 +73,36 @@ export function StudioPage() {
 function StepTabs() {
   return (
     <div role="tablist" aria-label="Stüdyo adımları" className="flex flex-wrap gap-2">
-      {STEPS.map((step, index) => (
-        <div
-          key={step.key}
-          role="tab"
-          aria-selected={step.enabled && step.key === "brief"}
-          aria-disabled={!step.enabled}
-          title={step.enabled ? undefined : "Bu adım ilerleyen bir safhada eklenecek"}
-          className={[
-            "rounded-md border px-3 py-1.5 text-xs font-medium",
-            step.enabled
-              ? "border-accent/60 bg-accent/10 text-accent"
-              : "cursor-not-allowed border-slate-800 bg-surface/30 text-slate-600",
-          ].join(" ")}
-        >
-          {index + 1}. {step.label}
-          {!step.enabled ? <span className="ml-1 text-[10px] text-slate-600">(yakında)</span> : null}
-        </div>
-      ))}
+      {STEPS.map((step, index) =>
+        step.enabled ? (
+          <NavLink
+            key={step.key}
+            to={step.key}
+            role="tab"
+            className={({ isActive }) =>
+              [
+                "rounded-md border px-3 py-1.5 text-xs font-medium",
+                isActive
+                  ? "border-accent bg-accent/20 text-accent"
+                  : "border-accent/60 bg-accent/10 text-accent hover:bg-accent/20",
+              ].join(" ")
+            }
+          >
+            {index + 1}. {step.label}
+          </NavLink>
+        ) : (
+          <div
+            key={step.key}
+            role="tab"
+            aria-disabled="true"
+            title="Bu adım ilerleyen bir safhada eklenecek"
+            className="cursor-not-allowed rounded-md border border-slate-800 bg-surface/30 px-3 py-1.5 text-xs font-medium text-slate-600"
+          >
+            {index + 1}. {step.label}
+            <span className="ml-1 text-[10px] text-slate-600">(yakında)</span>
+          </div>
+        ),
+      )}
     </div>
   );
 }

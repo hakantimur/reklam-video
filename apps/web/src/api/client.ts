@@ -2,6 +2,7 @@ import type {
   ApiErrorBody,
   BriefPayload,
   BriefResponse,
+  Concept,
   CreateProjectPayload,
   CredentialPayload,
   CredentialProvider,
@@ -184,6 +185,17 @@ export const api = {
 
   openProjectFolder: (id: string) =>
     request<void>(`/projects/${id}/open-folder`, { method: "POST" }),
+
+  generateConcepts: (projectId: string, model?: string) =>
+    request<Concept[]>(`/projects/${projectId}/concepts`, {
+      method: "POST",
+      body: JSON.stringify(model ? { model } : {}),
+    }),
+
+  listConcepts: (projectId: string) => request<Concept[]>(`/projects/${projectId}/concepts`),
+
+  selectConcept: (projectId: string, conceptId: string) =>
+    request<Concept>(`/projects/${projectId}/concepts/${conceptId}/select`, { method: "POST" }),
 };
 
 /** Bir hatayı kullanıcıya gösterilecek tek satırlık Türkçe metne çevirir. */

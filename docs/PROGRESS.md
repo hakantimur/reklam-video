@@ -16,7 +16,7 @@ Son güncelleme: 2026-09-11 (koordinatör oturumu başlangıcı).
 | 3 | Sağlayıcılar ve model keşfi | implemented (canlı katalog dahil) | GET /providers/models CANLI: 437 model (OpenRouter), video kataloğu 29 model. generate_structured/video submit-poll-download/ElevenLabs mock (key yok, provider_live marker ile ayrı). 67/67 test geçti |
 | 4 | Emülatör köprüsü, eşzamanlı kayıt | done | synova_test AVD üzerinde CANLI doğrulandı: ADB keşif/screenshot/tap/swipe, normalize koordinat + stale-observation reddi, scrcpy ile 17.7sn gerçek kayıt (3 eylem sırasında, H264+opus, ffprobe ile doğrulandı), /devices preflight API'si (screenshot+touch+kayıt+ses testi) — 9/9 device_live pytest geçti |
 | 5 | Görsel operatör, gerçek çekim | not-started | LLM key gerektirir → key gelene kadar live-blocked |
-| 6 | Yönetmen, senaryo, animatic | not-started | LLM key gerektirir |
+| 6 | Yönetmen, senaryo, animatic | in-progress | ConceptSet (3 fikir) üretimi CANLI doğrulandı: gerçek OpenRouter anahtarıyla gerçek Synova brief'inden gerçek, birbirinden farklı 3 fikir üretildi, DB'ye kaydedildi, tarayıcıda görüntülenip seçildi. Script/ShotPlan/animatic üretimi henüz yok |
 | 7 | Çekim arşivi, retake | not-started | |
 | 8 | İnsanlı AI sahneler, ses | not-started | Video/TTS provider key gerektirir |
 | 9 | Timeline ve final render | in-progress | Remotion iskeleti + placeholder composition canlı render ile doğrulandı (FR-15); gerçek asset/editor entegrasyonu, crop/QA, cache kapsam dışı bu round'da |

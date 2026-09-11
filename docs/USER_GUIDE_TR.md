@@ -64,13 +64,24 @@ yazılır ve uygulamayı kapatıp tekrar açsanız da kaybolmaz.
 - **Model kataloğu**: "Modelleri yenile" ile OpenRouter'ın güncel model
   listesini (anahtar gerekmeden) gerçekten çeker ve gösterir.
 
+### Senaryo — reklam fikri üretme (Stüdyo → 3. Senaryo)
+
+OpenRouter anahtarınız kayıtlıysa, brief'i kaydettikten sonra Senaryo
+adımında "Fikir üret" ile gerçek bir LLM çağrısı yaparak üç farklı reklam
+yaklaşımı (angle/hook/gerekçe) üretebilirsiniz. **Bu gerçek, ücretli bir API
+çağrısıdır** (kullandığınız modele göre küçük bir maliyeti olur). Oyunun
+otomatik keşfi henüz yapılmadığından, model gerçek oynanış ayrıntısı
+uydurmaz; gerekli yerlerde bunu ("gameplay keşfi gereklidir" gibi) açıkça
+belirtir. Ürettiğiniz fikirlerden birini "Bu fikri seç" ile işaretleyebilirsiniz.
+
 ## 4. Henüz çalışmayanlar (bilinçli olarak)
 
-- Oyunu otomatik keşfetme, senaryo/çekim listesi üretme, oyunu kendi
-  oynayarak kayıt alma (Safha 5-7) — bunlar için OpenRouter anahtarı ve
-  daha fazla geliştirme gerekiyor. Emülatör köprüsünün kendisi (bağlantı,
-  ekran görüntüsü, dokunma, kayıt) arka planda çalışıp test edilmiş
-  durumda, ama uygulama arayüzünden henüz tetiklenmiyor.
+- Oyunu otomatik keşfetme (Safha 5) ve çekim listesi/gerçek çekim (Safha 7)
+  henüz arayüze bağlı değil. Emülatör köprüsünün kendisi (bağlantı, ekran
+  görüntüsü, dokunma, kayıt) arka planda çalışıp test edilmiş durumda, ama
+  uygulama arayüzünden henüz tetiklenmiyor. Bu yüzden Senaryo adımındaki
+  fikirler şu an yalnızca brief metnine dayanıyor, gerçek oynanışa değil.
+- Script/ShotPlan üretimi (fikir seçildikten sonraki adım) henüz yok.
 - AI insanlı sahne/video üretimi, ses/altyazı, kurgu/render, dışa aktarma
   (Safha 8-11) — henüz yok.
 - Malzemeler ve İşler ekranları şu an sadece "yakında" durumunu gösteriyor.
