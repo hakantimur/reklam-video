@@ -13,12 +13,13 @@ Take — a shot can be gameplay *and* have a voice-over — so it is stored as
 its own `Asset` tagged with the shot id in `metadata_json`, not as a Take.
 """
 
+import base64
 import hashlib
 import time
 import uuid
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.agents.director import generate_scene_prompt
@@ -58,6 +59,42 @@ def _pick_generation_duration_s(video_provider: VideoProvider, model_id: str, ta
 
     longer_or_equal = [d for d in supported if d >= target_duration_s]
     return min(longer_or_equal) if longer_or_equal else max(supported)
+
+
+def _find_real_gameplay_reference_image(session: Session, project_id: str, project_root: Path) -> str | None:
+    """Ground AI-generated scenes in what the real game actually looks like
+    (found live: without this, `google/veo-3.1-lite` produces entirely
+    fabricated, generic mobile-game visuals — "synova bu değil" — even
+    though the model supports `reference_image_paths`/`frame_images` and a
+    real gameplay capture already exists in the same project by the time
+    any AI shot is generated in the normal Safha 8/9 workflow).
+
+    Picks the most recently accepted real `emulator_capture` video in this
+    project, samples one real frame from it, and returns it as a base64
+    `data:` URI — `OpenRouterVideoProvider.submit()` forwards
+    `reference_image_paths` entries verbatim as `image_url`, which must be
+    a URL or data URI, never a bare local filesystem path. Returns None
+    (never raises) when no usable gameplay capture exists yet, e.g. the
+    very first shot generated in a brand new project — grounding is a
+    quality improvement, not a hard requirement to generate at all."""
+
+    asset = session.execute(
+        select(Asset)
+        .where(Asset.project_id == project_id, Asset.type == "video", Asset.origin == "emulator_capture")
+        .order_by(desc(Asset.created_at))
+    ).scalars().first()
+    if asset is None:
+        return None
+
+    try:
+        frames = technical_qc.sample_frames_png(project_root / asset.relative_path, count=1)
+    except Exception:  # noqa: BLE001 - a missing/corrupt reference frame must not block generation
+        return None
+    if not frames:
+        return None
+
+    encoded = base64.b64encode(frames[0]).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
 
 
 def _get_shot_in_revision(session: Session, project_id: str, shot_id: str) -> Shot:
@@ -114,8 +151,14 @@ def generate_ai_scene_take(
 
     target_duration_s = max(shot.target_frames / _ASSUMED_FPS, 1.0)
     duration_s = _pick_generation_duration_s(video_provider, video_model, target_duration_s)
+    reference_image = _find_real_gameplay_reference_image(session, project_id, Path(project.root_path))
     request = VideoGenerationRequest(
-        model_id=video_model, prompt=shot.generation_prompt, duration_s=duration_s, ratio=ratio, resolution=resolution
+        model_id=video_model,
+        prompt=shot.generation_prompt,
+        duration_s=duration_s,
+        ratio=ratio,
+        resolution=resolution,
+        reference_image_paths=[reference_image] if reference_image else [],
     )
     validation = video_provider.validate_request(request)
     if not validation.ok:
@@ -171,6 +214,7 @@ def generate_ai_scene_take(
                 "actual_cost_usd": result.cost_usd,
                 "requested_duration_s": duration_s,
                 "target_duration_s": target_duration_s,
+                "grounded_in_real_gameplay": reference_image is not None,
             },
         },
     )
@@ -209,6 +253,7 @@ def generate_voice_asset(
     speech_provider: SpeechProvider,
     voice_id: str,
     language: str | None = None,
+    voice_settings: dict[str, float | bool] | None = None,
 ) -> Asset:
     project = projects_service.get_project(session, project_id)
     shot = _get_shot_in_revision(session, project_id, shot_id)
@@ -218,7 +263,7 @@ def generate_voice_asset(
     brief = projects_service.get_latest_brief(session, project_id)
     resolved_language = language or (brief.language if brief else "tr")
 
-    audio_bytes = speech_provider.synthesize(shot.voice_text, voice_id, resolved_language)
+    audio_bytes = speech_provider.synthesize(shot.voice_text, voice_id, resolved_language, voice_settings)
 
     audio_dir = Path(project.root_path) / "audio" / "voice"
     audio_dir.mkdir(parents=True, exist_ok=True)
@@ -243,6 +288,7 @@ def generate_voice_asset(
             "shot_id": shot.id,
             "role": "voice_over",
             "voice_id": voice_id,
+            "voice_settings": voice_settings or getattr(speech_provider, "DEFAULT_VOICE_SETTINGS", None),
             "language": resolved_language,
             "text": shot.voice_text,
         },

@@ -315,17 +315,34 @@ edilmemiş spec özelliklerinin şema iskeleti:
 Gerçek export (`exports/v001/export-70c5965b.mp4`, sha256 `298935b1...`)
 kullanıcı tarafından izlendi. Doğrulanan sorunlar:
 
-1. **AI sahneleri gerçek Synova'yı göstermiyor (kritik, kök neden
-   bulundu, düzeltme bu turda yapılıyor)** — `generate_ai_scene_take`
-   `reference_image_paths`'i hiç kullanmıyordu; provider katmanı
-   (`app/providers/openrouter.py`) ve model (`google/veo-3.1-lite`,
-   canlı katalogda `supports_reference_images: true`) bunu zaten
-   destekliyor. Düzeltme: gerçek bir Synova ekran görüntüsünü (emülatör
-   `emulator-5554`'ten ADB ile) base64 data URI'a çevirip
-   `reference_image_paths`'e geçirmek.
-2. **ElevenLabs sesi robotik (araştırma + düzeltme bu turda)** — hangi
-   `voice_id` kullanıldığı ve `voice_settings` (stability/similarity_boost/
-   style) hiç geçilmediği kontrol edilecek.
+1. **AI sahneleri gerçek Synova'yı göstermiyordu — DÜZELTİLDİ VE CANLI DOĞRULANDI (2026-09-11).**
+   Kök neden: `generate_ai_scene_take` `reference_image_paths`'i hiç
+   kullanmıyordu. Düzeltme: yeni `_find_real_gameplay_reference_image`
+   (`app/services/generation.py`), projedeki en son gerçek
+   `emulator_capture` gameplay videosundan bir kare örnekleyip base64
+   `data:image/png;base64,...` URI'ına çevirip `reference_image_paths`'e
+   geçiriyor. Bu değişikliği canlı denerken **provider katmanının
+   `frame_images` şeması da hiç gerçek API'ye karşı test edilmemişti ve
+   yanlıştı** — iki ayrı gerçek `400 ZodError` alındı ve düzeltildi
+   (bkz. TEST_REPORT.md "OpenRouter frame_images şeması" bölümü).
+   Düzeltmeden sonra 3 sahne de gerçekten yeniden üretildi
+   (`google/veo-3.1-lite`, gerçek maliyet), hepsi
+   `grounded_in_real_gameplay: true` ile işaretlendi, ve çıkarılan
+   kareler görsel olarak doğrulandı: artık gerçek Synova'nın "Repeat the
+   pattern" hafıza oyunu ızgarası (yeşil hücreler, aynı tipografi/renk
+   paleti) görünüyor — önceki tamamen jenerik/uydurma içerikten çok
+   büyük bir iyileşme.
+2. **ElevenLabs sesi robotikti — DÜZELTİLDİ VE CANLI DOĞRULANDI (2026-09-11).**
+   Kök neden: `synthesize()` hiçbir zaman `voice_settings` göndermiyordu,
+   ElevenLabs hesabın kayıtlı varsayılanına düşüyordu. Kullanılan ses de
+   "Sarah - Mature, Reassuring, Confident" idi — enerjik bir mobil oyun
+   reklamı için uygun olmayan bir ton. Düzeltme:
+   `ElevenLabsProvider.DEFAULT_VOICE_SETTINGS` eklendi
+   (`stability=0.4, similarity_boost=0.8, style=0.25,
+   use_speaker_boost=true`) ve her zaman (override edilmedikçe)
+   gönderiliyor; 3 seslendirme "Jessica - Playful, Bright, Warm" sesiyle
+   gerçekten yeniden üretildi, gerçek asset metadata'sında tuned
+   `voice_settings` doğrulandı.
 3. Donuk/statik görünen ardışık gameplay çekimleri — her çekim kendi
    başına `blank_or_frozen` QC'sini geçiyor ama zaman çizelgesinde yan
    yana geldiklerinde komşu çekimle karşılaştıran bir kontrol yok. QC
@@ -337,7 +354,11 @@ kullanıcı tarafından izlendi. Doğrulanan sorunlar:
 4. CTA sahnesinde bozuk/anlamsız uygulama ikonu metni — Veo'nun UI-mockup
    ağırlıklı sahnelerde sahte metin üretme eğilimi, muhtemelen prompt
    mühendisliğiyle (metin/ikon içeren sahnelerden kaçınma) azaltılabilir.
-   **Henüz düzeltilmedi**, kapsam dışı.
+   **Henüz düzeltilmedi** — reference-image grounding düzeltmesinden
+   sonra yeniden üretilen CTA sahnesinde de aynı sorun tekrar gözlemlendi
+   ("Hext.. Nernd, Next & Next Round..", "Chtttotantatts yund ale wd
+   counyind..." gibi anlamsız metin), yani grounding bunu çözmüyor —
+   ayrı bir prompt-mühendisliği çalışması gerekiyor. Kapsam dışı.
 5. Altyazı rozeti kısa metinlerde ("Şimdi İndir") konumlandırma
    tutarsızlığı. **Henüz düzeltilmedi**, kapsam dışı.
 

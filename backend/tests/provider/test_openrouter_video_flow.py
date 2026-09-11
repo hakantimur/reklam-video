@@ -116,6 +116,37 @@ def test_submit_returns_remote_job_id_on_202():
     assert remote_id == "job-abc123"
 
 
+def test_submit_sends_frame_images_in_the_real_documented_content_part_shape():
+    """Found live (2026-09-11): the previous shape
+    ({"frame_type": "first_frame", "image_url": path}) was rejected by the
+    real API with a ZodError -- frame_images[i] must be
+    {"type": "image_url", "image_url": {"url": ...}}, the same OpenAI-style
+    content-part shape used for chat message images elsewhere in this
+    codebase (`image_content_part` in app/providers/base.py)."""
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json as _json
+
+        captured["body"] = _json.loads(request.content)
+        return httpx.Response(202, json={"id": "job-abc123", "status": "pending"})
+
+    provider = _provider(handler)
+    request = VideoGenerationRequest(
+        model_id="google/veo-3.1", prompt="p", duration_s=8, ratio="16:9",
+        reference_image_paths=["data:image/png;base64,AAAA"],
+    )
+    provider.submit(request, idempotency_key="k1")
+
+    assert captured["body"]["frame_images"] == [
+        {
+            "type": "image_url",
+            "image_url": {"url": "data:image/png;base64,AAAA"},
+            "frame_type": "first_frame",
+        }
+    ]
+
+
 def test_submit_5xx_raises_submission_unknown_not_a_retry():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(500, json={"error": {"code": 500, "message": "boom"}})

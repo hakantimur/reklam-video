@@ -20,6 +20,7 @@ class GenerateSceneRequest(BaseModel):
 class GenerateVoiceRequest(BaseModel):
     voice_id: str
     language: str | None = None
+    voice_settings: dict[str, float | bool] | None = None
 
 
 class GenerationJobOut(BaseModel):
@@ -69,6 +70,8 @@ def start_generate_voice(
     payload = {"shot_id": shot_id, "voice_id": body.voice_id}
     if body.language is not None:
         payload["language"] = body.language
+    if body.voice_settings is not None:
+        payload["voice_settings"] = body.voice_settings
 
     job = job_queue.enqueue(
         session,

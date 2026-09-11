@@ -327,8 +327,17 @@ class OpenRouterVideoProvider:
         if request.generate_audio:
             body["generate_audio"] = True
         if request.reference_image_paths:
+            # Found live (2026-09-11), two rounds of real 400s from the
+            # actual /videos endpoint: the field needs BOTH a `type:
+            # "image_url"` discriminator (OpenAI-style content-part shape,
+            # `image_url` itself an object `{"url": ...}` — a bare string
+            # is rejected) AND a `frame_type` telling the model where in
+            # the clip the reference belongs (only "first_frame" or
+            # "last_frame" are accepted). Neither the original code nor
+            # the first fix attempt had ever been exercised against the
+            # real API before this — both were speculative and wrong.
             body["frame_images"] = [
-                {"frame_type": "first_frame", "image_url": path}
+                {"type": "image_url", "image_url": {"url": path}, "frame_type": "first_frame"}
                 for path in request.reference_image_paths
             ]
         body.update(request.extra)

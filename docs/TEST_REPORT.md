@@ -943,3 +943,93 @@ issue) ve gerçek final export başarıyla üretildi (bkz. PROGRESS.md
 "Onuncu tur").
 
 `pytest -q`: **255 passed, 11 deselected**.
+
+## Reference-image grounding: OpenRouter frame_images şeması iki kez yanlıştı, canlı bulundu (2026-09-11, onbirinci tur)
+
+Kullanıcı gerçek export videosunu izleyip "synova bu değil, görüntüler
+tamamen uydurma" geri bildirimini verdikten sonra, kök neden
+araştırıldı: `generate_ai_scene_take` (`app/services/generation.py`)
+`VideoGenerationRequest.reference_image_paths`'i hiçbir zaman
+doldurmuyordu, oysa bu alan provider katmanında zaten vardı ve
+`google/veo-3.1-lite` canlı katalogda `supports_reference_images: true`
+raporluyordu.
+
+**Düzeltme 1 (generation.py):** `_find_real_gameplay_reference_image`
+eklendi — projedeki en son kabul edilmiş gerçek `emulator_capture`
+gameplay Asset'inden `technical_qc.sample_frames_png` ile bir kare
+örnekleyip base64 data URI'a çeviriyor, `generate_ai_scene_take`
+bunu `reference_image_paths`'e geçiriyor. Hiç gameplay çekimi yoksa
+(örn. projenin ilk sahnesi) `None` döner ve üretim engellenmez.
+
+**Canlı denemede iki gerçek hata bulundu ve düzeltildi
+(`app/providers/openrouter.py::submit`):**
+
+Önceki kod hiç canlı test edilmemişti (dosyanın kendi docstring'i bunu
+zaten doğruca söylüyordu: "never exercised live"). Gerçek
+`POST /videos` isteği attı:
+
+1. İlk kod: `body["frame_images"] = [{"frame_type": "first_frame",
+   "image_url": path}]` → gerçek API'den **400 ZodError**:
+   `frame_images[0].type`: `"image_url"` bekleniyor (eksik);
+   `frame_images[0].image_url`: obje bekleniyor, string alındı.
+2. Düzeltme denemesi 1: `{"type": "image_url", "image_url": {"url":
+   path}}` → yine **400 ZodError**: `frame_images[0].frame_type` eksik,
+   `"first_frame"|"last_frame"` bekleniyor.
+3. Düzeltme denemesi 2 (final, doğru): `{"type": "image_url",
+   "image_url": {"url": path}, "frame_type": "first_frame"}` → gerçek
+   API bu şemayı kabul etti, iş `queued` → `running` → `succeeded`
+   durumuna geçti.
+
+Yeni contract testi eklendi
+(`tests/provider/test_openrouter_video_flow.py::test_submit_sends_frame_images_in_the_real_documented_content_part_shape`)
+— doğru gövde şemasını sabitliyor.
+
+**Canlı uçtan uca doğrulama:** Gerçek Synova projesinde 3 AI sahnesi
+(Hook, montaj, CTA) `google/veo-3.1-lite` ile gerçekten yeniden
+üretildi, üçü de `grounded_in_real_gameplay: true` metadata'sıyla ve
+teknik QC `pass` ile geldi. `ffmpeg` ile kareler çıkarılıp görsel
+incelendi: gerçek Synova'nın "Repeat the pattern" hafıza oyunu ızgarası
+(yeşil seçili hücreler, gerçek UI metni: "Round 1 of 5", "2 of 4
+selected", "Submit") doğru şekilde görünüyor — önceki tamamen jenerik
+mobil oyun halüsinasyonundan kesin bir iyileşme. Yeni takeler seçildi
+(`POST .../takes/{id}/select`), QA yeniden çalıştırıldı (**PASS**, 0
+issue), yeni final export gerçekten üretildi: asset
+`d7202bae-893a-44f1-a0d8-4cedd6d5e67a`,
+`exports/v001/export-94f2c181.mp4`, 8.76MB, 20.1sn.
+
+## ElevenLabs robotik ses: voice_settings hiç gönderilmiyordu, canlı bulundu ve düzeltildi (2026-09-11, onbirinci tur)
+
+Aynı geri bildirimde kullanıcı sesi "çok robotik" olarak nitelendirdi.
+Gerçek projedeki ses asset'lerinin metadata'sı incelendi: `voice_id`
+her zaman `EXAVITQu4vr4xnSDxMaL` ("Sarah - Mature, Reassuring,
+Confident") idi ve `ElevenLabsProvider.synthesize()`'ın `body`'sinde
+`voice_settings` hiç bulunmuyordu (yalnızca kullanılmayan bir `style`
+parametresi varsa gönderiliyordu, hiçbir çağıran onu hiç geçmiyordu) —
+yani her istek ElevenLabs hesabının o ses için kayıtlı varsayılan
+ayarına düşüyordu.
+
+**Düzeltme:** `ElevenLabsProvider.DEFAULT_VOICE_SETTINGS` eklendi
+(`stability=0.4, similarity_boost=0.8, style=0.25,
+use_speaker_boost=true`) — artık her istek bunu (veya çağıranın
+verdiği override'ı) gönderiyor. `SpeechProvider.synthesize()` imzası
+`style: str | None` yerine `voice_settings: dict | None` alacak şekilde
+güncellendi (eski `style` parametresi hiç kullanılmıyordu ve yanlış
+tipte tanımlanmıştı — `str`, oysa ElevenLabs'in `style` alanı 0-1
+arası bir `float`). `generate_voice_asset` → `generate_voice` job
+handler → `POST .../generate-voice` API'sine kadar tüm zincir
+`voice_settings`'i opsiyonel olarak taşıyacak şekilde güncellendi.
+
+Yeni contract testleri eklendi
+(`tests/provider/test_elevenlabs_contract.py`):
+`test_synthesize_posts_text_and_returns_audio_bytes_with_default_voice_settings`
+(varsayılanların gönderildiğini doğruluyor),
+`test_synthesize_uses_caller_supplied_voice_settings_when_given`.
+
+**Canlı doğrulama:** Gerçek Synova projesinde 3 seslendirme, hem tuned
+`voice_settings` hem de daha enerjik bir ses ("Jessica - Playful,
+Bright, Warm", `cgSgspJ2msm6clMCkdW9` — bir enerjik mobil oyun
+reklamına "Sarah - Mature, Reassuring"den daha uygun) ile gerçekten
+yeniden üretildi; yeni asset'in `metadata_json.voice_settings` alanında
+tuned değerler doğrudan DB'den okunarak doğrulandı.
+
+`pytest -q`: **259 passed, 11 deselected**.

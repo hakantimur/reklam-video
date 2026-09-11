@@ -154,7 +154,7 @@ class SpeechProvider(Protocol):
         text: str,
         voice_id: str,
         language: str,
-        style: str | None = None,
+        voice_settings: dict[str, float | bool] | None = None,
     ) -> bytes: ...
 
 

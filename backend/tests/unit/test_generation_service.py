@@ -170,6 +170,58 @@ def test_generate_ai_scene_take_falls_back_to_target_when_catalog_lookup_fails(d
     assert request.duration_s == 3.0
 
 
+def test_generate_ai_scene_take_grounds_the_request_in_a_real_gameplay_capture(db_session, tmp_path, monkeypatch):
+    """Found live: without this, `generate_ai_scene_take` never populated
+    `reference_image_paths`, so the real Veo model had nothing to ground
+    itself in and produced entirely fabricated visuals ("synova bu değil.
+    görüntüler tamamen uydurma."). When a real accepted `emulator_capture`
+    video already exists in the project, a frame sampled from it must be
+    forwarded as a base64 data URI reference image."""
+    from app.models.asset import Asset
+
+    project_id, shot_id = _setup_shot(db_session)
+    gameplay_asset = Asset(
+        project_id=project_id, type="video", origin="emulator_capture",
+        relative_path="capture/real-gameplay.mp4", sha256="g", byte_size=1,
+    )
+    db_session.add(gameplay_asset)
+    db_session.commit()
+
+    monkeypatch.setattr(
+        generation_service.technical_qc, "sample_frames_png", lambda path, count=1: [b"\x89PNGfakeframebytes"]
+    )
+    video_provider = _FakeVideoProvider(tmp_path)
+
+    generation_service.generate_ai_scene_take(
+        db_session, project_id, shot_id,
+        text_provider=_fake_text_provider(), text_model="test/model",
+        video_provider=video_provider, video_model="test/video-model",
+        poll_interval_s=0.01, max_wait_s=1.0,
+    )
+
+    request, _ = video_provider.submit_calls[0]
+    assert len(request.reference_image_paths) == 1
+    assert request.reference_image_paths[0].startswith("data:image/png;base64,")
+
+
+def test_generate_ai_scene_take_has_no_reference_image_when_no_gameplay_capture_exists(db_session, tmp_path):
+    """No real gameplay footage yet (e.g. the very first shot in a brand
+    new project) must not block AI generation -- grounding is a quality
+    improvement, not a hard requirement."""
+    project_id, shot_id = _setup_shot(db_session)
+    video_provider = _FakeVideoProvider(tmp_path)
+
+    generation_service.generate_ai_scene_take(
+        db_session, project_id, shot_id,
+        text_provider=_fake_text_provider(), text_model="test/model",
+        video_provider=video_provider, video_model="test/video-model",
+        poll_interval_s=0.01, max_wait_s=1.0,
+    )
+
+    request, _ = video_provider.submit_calls[0]
+    assert request.reference_image_paths == []
+
+
 def test_generate_ai_scene_take_reuses_existing_prompt(db_session, tmp_path):
     project_id, shot_id = _setup_shot(db_session)
     shot = db_session.get(Shot, shot_id)
@@ -219,8 +271,8 @@ class _FakeSpeechProvider:
     def list_voices(self):
         return []
 
-    def synthesize(self, text, voice_id, language, style=None):
-        self.calls.append((text, voice_id, language))
+    def synthesize(self, text, voice_id, language, voice_settings=None):
+        self.calls.append((text, voice_id, language, voice_settings))
         return self.audio_bytes
 
 
@@ -244,7 +296,7 @@ def test_generate_voice_asset_persists_audio(monkeypatch, db_session):
     assert asset.byte_size == len(provider.audio_bytes)
     assert asset.duration_us == 4_460_000
     assert asset.metadata_json["role"] == "voice_over"
-    assert provider.calls == [("Şimdi indir!", "voice-1", "tr")]
+    assert provider.calls == [("Şimdi indir!", "voice-1", "tr", None)]
 
 
 def test_generate_voice_asset_duration_is_none_when_probe_fails(monkeypatch, db_session):

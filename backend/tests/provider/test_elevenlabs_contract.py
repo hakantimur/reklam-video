@@ -47,7 +47,11 @@ def test_synthesize_without_api_key_is_unsupported():
         provider.synthesize("hello", "abc123", "tr")
 
 
-def test_synthesize_posts_text_and_returns_audio_bytes():
+def test_synthesize_posts_text_and_returns_audio_bytes_with_default_voice_settings():
+    """Found live: omitting `voice_settings` entirely makes ElevenLabs fall
+    back to the voice's stored account default, which the user heard as
+    "çok robotik" on the real Synova ad. A real request must always carry
+    explicit, tuned settings unless the caller overrides them."""
     captured = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -59,14 +63,30 @@ def test_synthesize_posts_text_and_returns_audio_bytes():
         return httpx.Response(200, content=b"FAKE_MP3_BYTES", headers={"Content-Type": "audio/mpeg"})
 
     provider = _provider(handler)
-    audio = provider.synthesize("Merhaba dunya", "abc123", "tr", style="energetic")
+    audio = provider.synthesize("Merhaba dunya", "abc123", "tr")
 
     assert captured["path"] == "/v1/text-to-speech/abc123"
     assert captured["xi_key"] == "el-test-key"
     assert captured["body"]["text"] == "Merhaba dunya"
     assert captured["body"]["language_code"] == "tr"
-    assert captured["body"]["voice_settings"] == {"style": "energetic"}
+    assert captured["body"]["voice_settings"] == ElevenLabsProvider.DEFAULT_VOICE_SETTINGS
     assert audio == b"FAKE_MP3_BYTES"
+
+
+def test_synthesize_uses_caller_supplied_voice_settings_when_given():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json as _json
+
+        captured["body"] = _json.loads(request.content)
+        return httpx.Response(200, content=b"FAKE_MP3_BYTES", headers={"Content-Type": "audio/mpeg"})
+
+    provider = _provider(handler)
+    custom = {"stability": 0.1, "similarity_boost": 0.9, "style": 0.5, "use_speaker_boost": False}
+    provider.synthesize("Merhaba dunya", "abc123", "tr", voice_settings=custom)
+
+    assert captured["body"]["voice_settings"] == custom
 
 
 def test_synthesize_raises_on_error_status():

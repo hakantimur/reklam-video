@@ -51,7 +51,67 @@ iki kök sorunu BEN gözden kaçırmıştım:
 
 Kullanıcının talimatı: bulgulara göre gerçek uygulama kodu revize
 edilecek ve gerçek (ücretli API'lerle) bir örnek video yeniden
-üretilecek. Bu iş bu turda devam ediyor — ayrıntı KNOWN_LIMITATIONS.md.
+üretilecek.
+
+## Reference-image grounding + robotik ses düzeltmesi CANLI DOĞRULANDI (2026-09-11, onbirinci tur)
+
+Her iki kök neden düzeltildi ve gerçek API çağrılarıyla doğrulandı:
+
+**1. AI sahneleri artık gerçek Synova görüntüsüne "grounded":**
+`app/services/generation.py`'ye `_find_real_gameplay_reference_image`
+eklendi — projedeki en son gerçek `emulator_capture` gameplay
+videosundan `technical_qc.sample_frames_png` ile bir kare örnekleyip
+base64 `data:image/png;base64,...` URI'a çevirip
+`VideoGenerationRequest.reference_image_paths`'e geçiriyor. Bunu ilk
+canlı denemede `app/providers/openrouter.py`'nin `frame_images` gövde
+şeması da hiç gerçek API'ye karşı sınanmamıştı ve YANLIŞTI — gerçek
+`POST /videos` isteği art arda 2 farklı `400 ZodError` döndürdü:
+
+1. `{"frame_type": "first_frame", "image_url": path}` → hata:
+   `frame_images[0].type` `"image_url"` bekliyor,
+   `frame_images[0].image_url` string değil obje olmalı.
+2. `{"type": "image_url", "image_url": {"url": path}}` → hata:
+   `frame_images[0].frame_type` eksik, `"first_frame"|"last_frame"`
+   bekleniyor.
+
+Gerçek/doğru şema: `{"type": "image_url", "image_url": {"url": ...},
+"frame_type": "first_frame"}` — ikisi birden gerekiyor. Düzeltmeden
+sonra 3. denemede 3 sahne de (Hook, montaj, CTA) gerçekten
+`google/veo-3.1-lite` ile yeniden üretildi (gerçek harcama), hepsi
+`metadata_json.provider.grounded_in_real_gameplay: true` ile işaretli,
+teknik QC hepsinde `pass`. Kareler çıkarılıp görsel olarak incelendi:
+artık gerçek Synova'nın "Repeat the pattern" hafıza oyunu ızgarası
+(yeşil seçili hücreler, "Round 1 of 5" / "2 of 4 selected" gibi gerçek
+UI metni) görünüyor — önceki tamamen jenerik/uydurma mobil oyun
+görüntüsünden büyük bir iyileşme. (Not: CTA sahnesindeki bozuk/anlamsız
+metin sorunu grounding'den bağımsız, hâlâ mevcut — bkz.
+KNOWN_LIMITATIONS.md.)
+
+**2. Ses artık tuned `voice_settings` ile üretiliyor:**
+`ElevenLabsProvider.synthesize()` artık her zaman `voice_settings`
+gönderiyor (`stability=0.4, similarity_boost=0.8, style=0.25,
+use_speaker_boost=true` varsayılan olarak, çağıran override edebilir).
+3 seslendirme gerçekten yeniden üretildi, hem tuned ayarlarla hem de
+daha enerjik bir sesle ("Jessica - Playful, Bright, Warm",
+`cgSgspJ2msm6clMCkdW9`) — önceki "Sarah - Mature, Reassuring,
+Confident" yerine.
+
+**Yeni tam export:** asset `d7202bae-893a-44f1-a0d8-4cedd6d5e67a`,
+`exports/v001/export-94f2c181.mp4`, 8.76MB, 20.1sn, teknik QC pass, QA
+pass (0 issue). Kullanıcıya `SendUserFile` ile gönderildi.
+
+Birim testleri: `test_generate_ai_scene_take_grounds_the_request_in_a_real_gameplay_capture`,
+`test_generate_ai_scene_take_has_no_reference_image_when_no_gameplay_capture_exists`,
+`test_submit_sends_frame_images_in_the_real_documented_content_part_shape`,
+`test_synthesize_posts_text_and_returns_audio_bytes_with_default_voice_settings`,
+`test_synthesize_uses_caller_supplied_voice_settings_when_given`.
+
+`pytest -q`: **259 passed, 11 deselected**.
+
+**Henüz düzeltilmedi (kapsam dışı bırakıldı, ayrıntı KNOWN_LIMITATIONS.md):**
+CTA'daki bozuk/anlamsız uygulama metni, ardışık gameplay çekimlerinin
+donuk görünmesi (tek-tek QC her birini geçiyor), altyazı rozeti
+konumlandırma tutarsızlığı.
 
 ## Safha durumu
 

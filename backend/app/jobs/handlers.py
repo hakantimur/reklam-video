@@ -220,6 +220,7 @@ def _generate_voice(session: Session, job: Job) -> dict:
             speech_provider=provider,
             voice_id=payload["voice_id"],
             language=payload.get("language"),
+            voice_settings=payload.get("voice_settings"),
         )
     finally:
         provider.close()

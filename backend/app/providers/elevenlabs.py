@@ -59,22 +59,39 @@ class ElevenLabsProvider:
         response.raise_for_status()
         return response.json().get("voices", [])
 
+    # Found live (2026-09-11): leaving `voice_settings` out entirely makes
+    # ElevenLabs fall back to whatever default is stored against the voice
+    # on the account, which the user heard as "çok robotik" on the real
+    # Synova ad's voice-over. These are ElevenLabs' own documented
+    # defaults for a natural, expressive `eleven_multilingual_v2` read —
+    # lower stability trades a little consistency for a much less flat/
+    # monotone delivery, `use_speaker_boost` clarifies the specific voice's
+    # timbre instead of the model's generic average.
+    DEFAULT_VOICE_SETTINGS: dict[str, float | bool] = {
+        "stability": 0.4,
+        "similarity_boost": 0.8,
+        "style": 0.25,
+        "use_speaker_boost": True,
+    }
+
     def synthesize(
         self,
         text: str,
         voice_id: str,
         language: str,
-        style: str | None = None,
+        voice_settings: dict[str, float | bool] | None = None,
     ) -> bytes:
         if not self.api_key:
             raise UnsupportedOperationError(
                 "ElevenLabs API key required to synthesize speech (spec §2.2)"
             )
-        body: dict[str, Any] = {"text": text, "model_id": "eleven_multilingual_v2"}
+        body: dict[str, Any] = {
+            "text": text,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": voice_settings or self.DEFAULT_VOICE_SETTINGS,
+        }
         if language:
             body["language_code"] = language
-        if style:
-            body["voice_settings"] = {"style": style}
 
         headers = {**self._headers(), "Content-Type": "application/json", "Accept": "audio/mpeg"}
         # Paid POST: never auto-retried here (spec §9.4/§19.2).
