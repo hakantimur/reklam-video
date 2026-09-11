@@ -50,7 +50,24 @@ class StructuredGenerationOptions:
 @dataclass
 class ChatMessage:
     role: Literal["system", "user", "assistant"]
-    content: str
+    # A plain string for text-only messages, or a list of OpenAI/OpenRouter-
+    # style content parts (`{"type": "text", "text": ...}` /
+    # `{"type": "image_url", "image_url": {"url": ...}}`) for a message that
+    # attaches an image (spec §11: the operator agent is vision-based —
+    # it decides its next action from a real screenshot, not a text
+    # description of one).
+    content: str | list[dict[str, Any]]
+
+
+def image_content_part(png_bytes: bytes) -> dict[str, Any]:
+    import base64
+
+    encoded = base64.b64encode(png_bytes).decode("ascii")
+    return {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded}"}}
+
+
+def text_content_part(text: str) -> dict[str, Any]:
+    return {"type": "text", "text": text}
 
 
 @dataclass

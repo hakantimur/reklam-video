@@ -85,6 +85,32 @@ export interface Concept {
   selected: boolean;
 }
 
+// --- devices / discovery (spec §11, §8.1) ---
+
+export interface DeviceSummary {
+  serial: string;
+  state: string;
+  model: string | null;
+  width: number | null;
+  height: number | null;
+  orientation: number | null;
+}
+
+export interface DiscoverJob {
+  job_id: string;
+  revision_id: string | null;
+  state: string;
+}
+
+export interface Job {
+  id: string;
+  project_id: string;
+  kind: string;
+  state: string;
+  result_json: Record<string, unknown>;
+  error_code: string | null;
+}
+
 // --- plan (spec §10.2 Script+ShotPlan, §8.1 POST/GET /projects/{id}/plan) ---
 
 export interface PlanShot {

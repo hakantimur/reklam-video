@@ -4,6 +4,9 @@ import type {
   BriefResponse,
   Concept,
   CreateProjectPayload,
+  DeviceSummary,
+  DiscoverJob,
+  Job,
   Revision,
   CredentialPayload,
   CredentialProvider,
@@ -205,6 +208,18 @@ export const api = {
     }),
 
   getPlan: (projectId: string) => request<Revision | null>(`/projects/${projectId}/plan`),
+
+  listDevices: () => request<DeviceSummary[]>("/devices"),
+
+  listDeviceApps: (serial: string) => request<string[]>(`/devices/${serial}/apps`),
+
+  startDiscovery: (projectId: string, serial: string, packageId: string) =>
+    request<DiscoverJob>(`/projects/${projectId}/discover`, {
+      method: "POST",
+      body: JSON.stringify({ serial, package_id: packageId }),
+    }),
+
+  getJob: (jobId: string) => request<Job>(`/jobs/${jobId}`),
 };
 
 /** Bir hatayı kullanıcıya gösterilecek tek satırlık Türkçe metne çevirir. */

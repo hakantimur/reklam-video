@@ -8,6 +8,7 @@ import { LoadingState } from "../components/common/LoadingState";
 import { useUIStore } from "../state/uiStore";
 import { BriefForm } from "./BriefForm";
 import { ConceptsStep } from "./ConceptsStep";
+import { DiscoveryStep } from "./DiscoveryStep";
 
 interface StepDef {
   key: string;
@@ -23,7 +24,7 @@ interface StepDef {
 // durumuyla gösteriliyor.
 const STEPS: StepDef[] = [
   { key: "brief", label: "Brief", enabled: true },
-  { key: "kesif", label: "Keşif", enabled: false },
+  { key: "kesif", label: "Keşif", enabled: true },
   { key: "senaryo", label: "Senaryo", enabled: true },
   { key: "cekim", label: "Çekim", enabled: false },
   { key: "taslak", label: "Taslak", enabled: false },
@@ -62,6 +63,7 @@ export function StudioPage() {
         <Routes>
           <Route path="/" element={<Navigate to="brief" replace />} />
           <Route path="brief" element={<BriefStep projectId={activeProjectId} />} />
+          <Route path="kesif" element={<DiscoveryStep projectId={activeProjectId} />} />
           <Route path="senaryo" element={<ConceptsStep projectId={activeProjectId} />} />
           <Route path="*" element={<Navigate to="brief" replace />} />
         </Routes>

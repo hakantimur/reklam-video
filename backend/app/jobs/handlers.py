@@ -37,6 +37,44 @@ def _dummy_echo(session: Session, job: Job) -> dict:
     return {"echo": job.payload_json}
 
 
+@register_handler("discover")
+def _discover(session: Session, job: Job) -> dict:
+    """Spec §8.1 POST /projects/{id}/discover, run out-of-band since a real
+    discovery pass can take up to spec §3.2's 10-minute budget."""
+
+    from app.providers.openrouter import OpenRouterClient, OpenRouterTextVisionProvider
+    from app.services import credentials as credentials_service
+    from app.services import discovery as discovery_service
+    from app.services.errors import BlockedError
+
+    payload = job.payload_json
+    api_key = credentials_service.get_credential_value("openrouter")
+    if not api_key:
+        raise BlockedError("OpenRouter API anahtarı olmadan keşif çalıştırılamaz.")
+
+    client = OpenRouterClient(api_key=api_key)
+    try:
+        provider = OpenRouterTextVisionProvider(client)
+        game_profile = discovery_service.run_discovery(
+            session,
+            job.project_id,
+            serial=payload["serial"],
+            package_id=payload["package_id"],
+            provider=provider,
+            model=payload.get("model", "anthropic/claude-haiku-4.5"),
+            max_actions=payload.get("max_actions", discovery_service.DEFAULT_MAX_ACTIONS),
+            max_seconds=payload.get("max_seconds", discovery_service.DEFAULT_MAX_SECONDS),
+        )
+    finally:
+        client.close()
+
+    return {
+        "game_profile_id": game_profile.id,
+        "mechanic_summary": game_profile.mechanic_summary,
+        "confidence": game_profile.confidence,
+    }
+
+
 def run_worker_once(
     session: Session, *, queue: JobQueue = job_queue, kinds: list[str] | None = None
 ) -> Job | None:

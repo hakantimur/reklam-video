@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -8,13 +9,22 @@ from app.api import ROUTERS as CORE_ROUTERS
 from app.api.devices import router as devices_router
 from app.api.health import router as health_router
 from app.api.providers import router as providers_router
+from app.jobs.worker import start_background_worker
 from app.security.local_origin import LocalOriginMiddleware
 
 _WEB_DIST = Path(__file__).resolve().parents[2] / "apps" / "web" / "dist"
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    # Spec §6.2: FastAPI itself must not run long jobs; a background thread
+    # actually consumes the job queue that app/jobs/handlers.py defines.
+    start_background_worker()
+    yield
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="Local Ad Director API", version="0.1.0")
+    app = FastAPI(title="Local Ad Director API", version="0.1.0", lifespan=_lifespan)
     app.add_middleware(LocalOriginMiddleware)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(devices_router, prefix="/api/v1")
