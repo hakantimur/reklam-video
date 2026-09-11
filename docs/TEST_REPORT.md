@@ -165,6 +165,44 @@ CANLI doğrulandı** (aynı gün, ikinci tur):
    doğrudan SQLite sorgusuyla `shots.selected_take_id`'nin gerçekten
    güncellendiği doğrulandı.
 
+## Safha 8 canlı üretim kanıtı (2026-09-11, gerçek OpenRouter + gerçek ElevenLabs anahtarı)
+
+Yeni `generate_ai_scene` ve `generate_voice` job'ları, Safha 6'nın ürettiği
+gerçek ShotPlan'ın ilk `ai_generated` sahnesi (`dd4d9c89-...`, "Hook and
+establish product with colorful game variety theme") için tetiklendi.
+
+**Video (`POST /projects/{id}/shots/{shot_id}/generate-scene`):** önce
+yönetmen (director) ajanı, Synova marka bilgisinden gerçek bir LLM
+çağrısıyla İngilizce bir video-üretim prompt'u yazdı (`Shot.generation_prompt`
+alanına kaydedildi), ardından bu prompt gerçek `google/veo-3.1-lite`
+modeline gönderildi. Gerçek submit→poll→download döngüsü ~51 saniyede
+tamamlandı:
+
+```
+Asset: generated/video/shot-dd4d9c89-...-take1.mp4, 1,447,495 bytes
+ffprobe (bagimsiz dogrulama): h264 720x1280 + aac audio, duration=4.010000s
+Teknik QC: probe=pass, decode=pass, scene_detect=pass, blank_or_frozen=pass
+Take: status=pending, attempt=1
+```
+
+**Ses (`POST /projects/{id}/shots/{shot_id}/generate-voice`):** aynı
+sahnenin gerçek Türkçe seslendirme metni ("Synova ile sekiz farklı oyunla
+her gün yeni bir beyin harikası keşfedin.") gerçek ElevenLabs sesiyle
+("Sarah", `eleven_multilingual_v2`, `language_code=tr`) seslendirildi:
+
+```
+Asset: audio/voice/shot-dd4d9c89-...-voice-....mp3, 72,351 bytes
+ffprobe (bagimsiz dogrulama): mp3, duration=4.458231s
+```
+
+Ses varlığı bir Take'e değil doğrudan Asset'e bağlanır
+(`metadata_json.shot_id`) — bir sahne aynı anda hem gameplay/AI görüntüsü
+hem de ayrı bir seslendirmeye sahip olabilir (spec'te ayrı bir
+`shots.voice_asset_id` kolonu yok).
+
+`pytest -q`: 162 passed, 11 deselected (13 yeni test:
+`test_generation_service.py` + `test_generation_api.py`).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

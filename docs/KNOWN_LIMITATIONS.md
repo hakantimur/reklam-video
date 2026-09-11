@@ -8,12 +8,16 @@ liste boşalana kadar kullanılmaz.
 
 1. ~~OpenRouter API anahtarı yok~~ — **çözüldü (2026-09-11)**: kullanıcı
    gerçek anahtarını Ayarlar ekranından girdi, Windows Credential Manager'a
-   kaydedildi. Yönetmen (concept üretimi) bu anahtarla CANLI doğrulandı.
-   Operatör (oyun kontrol stratejisi), reviewer ve video üretimi henüz
-   uygulanmadı (Safha 5/8) — anahtar var ama bu akışlar için kod yok.
+   kaydedildi. Yönetmen (concept/plan/sahne prompt üretimi), operatör (oyun
+   kontrol stratejisi, keşif+çekim) ve video üretimi (`/videos` submit-
+   poll-download) artık hepsi CANLI doğrulandı. Reviewer ajanı (spec §10,
+   otomatik take değerlendirmesi) henüz uygulanmadı — Take'ler şu an
+   yalnızca teknik QC'ye göre `pending`/`rejected`/`uncertain` oluyor,
+   içerik/marka uyumu bir insan veya ayrı bir reviewer çağrısı gerektiriyor.
 2. ~~ElevenLabs API anahtarı yok~~ — **çözüldü (2026-09-11)**: kullanıcı
    gerçek anahtarını girdi, `list_voices()` ile canlı doğrulandı (21 ses
-   bulundu). TTS üretimi (synthesize) henüz bir akışa bağlanmadı.
+   bulundu). TTS üretimi (`synthesize`) artık CANLI doğrulandı — gerçek
+   Türkçe bir seslendirme metninden gerçek bir MP3 üretildi.
 3. ~~ffmpeg / scrcpy ikilik dosyaları makinede kurulu değildi~~ — **çözüldü
    (2026-09-11)**: `scripts/setup/fetch_binaries.py` ile ffmpeg 9.0.1 ve
    scrcpy v4.1 resmi kaynaklardan sürüm+checksum doğrulamasıyla indirildi,
@@ -56,6 +60,28 @@ liste boşalana kadar kullanılmaz.
 4. **Olay tabanlı otomatik in/out kırpma yok.** Her take'in tamamı
    (`in_us=0`, `out_us=süre`) saklanıyor; `success_predicate`'e göre gerçek
    olay anını video içinde bulup kırpmak (spec §11.6/12.x) ayrı bir iş.
+
+## Safha 8 — AI sahne + ses üretimi (2026-09-11)
+
+1. **`OpenRouterVideoProvider.estimate_cost()` gerçek fiyatlandırma
+   şekillerinin çoğunu okuyamıyor.** Yalnızca eski
+   `pricing.cents_per_second_output` alanını arıyor; gerçek katalogdaki 29
+   modelin çoğu bunun yerine `duration_seconds_*` (dolar, sent değil) veya
+   `video_tokens*` gibi farklı anahtarlar kullanıyor — bu yüzden çoğu model
+   için maliyet tahmini "unknown" dönüyor (sessizce sıfır DEĞİL, ama yine de
+   yanlış bilgilendirici). Canlı doğrulanan `google/veo-3.1-lite` çağrısının
+   gerçek maliyeti bu tahminden değil, OpenRouter'ın kendi kullanım
+   panelinden teyit edilmelidir.
+2. **Toplu/otomatik üretim yok.** Her `ai_generated` sahne ve her
+   seslendirme tek tek, elle (API çağrısıyla) tetikleniyor; Stüdyo'da bunun
+   için bir ekran henüz eklenmedi (Çekim ekranı yalnızca `gameplay`
+   sahneleri kapsıyor).
+3. **Lipsync (`LipSyncProvider`) hâlâ yalnızca arayüz düzeyinde.** Üretilen
+   ses ile bir AI insan sahnesini senkronlamak bu turda kapsam dışı.
+4. **Ses varlığı `shots.voice_asset_id` gibi bir kolona değil, sadece
+   `Asset.metadata_json.shot_id`'ye bağlı.** Bu, sorgulanabilir ve doğru
+   çalışıyor, ama şemada birinci sınıf bir ilişki değil — Safha 9/10'da
+   timeline'a bağlarken bu sözleşmeye dikkat edilmeli.
 
 ## Frontend (apps/web) — Safha 1 UI iskeleti (2026-09-11, agent/frontend-web)
 

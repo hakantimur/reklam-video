@@ -113,6 +113,69 @@ def _capture_shot(session: Session, job: Job) -> dict:
     }
 
 
+@register_handler("generate_ai_scene")
+def _generate_ai_scene(session: Session, job: Job) -> dict:
+    """Spec §8.1 POST /projects/{id}/shots/{shot_id}/generate-scene (Safha 8)."""
+
+    from app.providers.openrouter import OpenRouterClient, OpenRouterTextVisionProvider, OpenRouterVideoProvider
+    from app.services import credentials as credentials_service
+    from app.services import generation as generation_service
+    from app.services.errors import BlockedError
+
+    payload = job.payload_json
+    api_key = credentials_service.get_credential_value("openrouter")
+    if not api_key:
+        raise BlockedError("OpenRouter API anahtarı olmadan AI sahne üretilemez.")
+
+    client = OpenRouterClient(api_key=api_key)
+    try:
+        take = generation_service.generate_ai_scene_take(
+            session,
+            job.project_id,
+            payload["shot_id"],
+            text_provider=OpenRouterTextVisionProvider(client),
+            text_model=payload.get("text_model", "anthropic/claude-haiku-4.5"),
+            video_provider=OpenRouterVideoProvider(client),
+            video_model=payload["video_model"],
+            ratio=payload.get("ratio", "9:16"),
+            resolution=payload.get("resolution"),
+        )
+    finally:
+        client.close()
+
+    return {"take_id": take.id, "asset_id": take.asset_id, "status": take.status, "attempt": take.attempt}
+
+
+@register_handler("generate_voice")
+def _generate_voice(session: Session, job: Job) -> dict:
+    """Spec §8.1 POST /projects/{id}/shots/{shot_id}/generate-voice (Safha 8)."""
+
+    from app.providers.elevenlabs import ElevenLabsProvider
+    from app.services import credentials as credentials_service
+    from app.services import generation as generation_service
+    from app.services.errors import BlockedError
+
+    payload = job.payload_json
+    api_key = credentials_service.get_credential_value("elevenlabs")
+    if not api_key:
+        raise BlockedError("ElevenLabs API anahtarı olmadan seslendirme üretilemez.")
+
+    provider = ElevenLabsProvider(api_key=api_key)
+    try:
+        asset = generation_service.generate_voice_asset(
+            session,
+            job.project_id,
+            payload["shot_id"],
+            speech_provider=provider,
+            voice_id=payload["voice_id"],
+            language=payload.get("language"),
+        )
+    finally:
+        provider.close()
+
+    return {"asset_id": asset.id, "byte_size": asset.byte_size}
+
+
 def run_worker_once(
     session: Session, *, queue: JobQueue = job_queue, kinds: list[str] | None = None
 ) -> Job | None:
