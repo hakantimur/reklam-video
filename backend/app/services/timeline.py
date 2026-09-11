@@ -23,7 +23,7 @@ from app.services.errors import ValidationAppError
 DEFAULT_CANVAS = {"width": 1080, "height": 1920}
 
 
-def _selected_or_best_take(session: Session, shot: Shot) -> Take | None:
+def selected_or_best_take(session: Session, shot: Shot) -> Take | None:
     if shot.selected_take_id:
         take = session.get(Take, shot.selected_take_id)
         if take is not None:
@@ -79,7 +79,7 @@ def build_timeline(session: Session, project_id: str) -> dict:
     for shot in shots:
         start = cursor
         duration = shot.target_frames
-        take = _selected_or_best_take(session, shot)
+        take = selected_or_best_take(session, shot)
         locks = shot.locks_json or {}
 
         video_items.append(

@@ -95,7 +95,7 @@ def test_render_preview_job_stages_assets_and_persists_output(monkeypatch, db_se
 
     assert asset.type == "proxy"
     assert asset.origin == "derived"
-    assert (render_service._PUBLIC_DIR / f"video-{shot.id}.mp4").exists()
+    assert (render_service.PUBLIC_DIR / f"video-{shot.id}.mp4").exists()
 
     from pathlib import Path
 

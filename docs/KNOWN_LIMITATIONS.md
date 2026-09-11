@@ -120,6 +120,24 @@ liste boşalana kadar kullanılmaz.
    hangi Take'in kullanılacağı LLM çıktısına değil ayrı bir çekim/üretim
    adımına bağlı.
 
+## Safha 11 — QA + teslim (2026-09-11)
+
+1. **İçerik/marka güvenliği reviewer'ı yok.** QA yalnızca mekanik olarak
+   kontrol edilebilir şeyleri (take var mı, teknik QC geçti mi, asset
+   kökeni `synthetic_test` mi, kare toplamı brief'le uyuşuyor mu) kontrol
+   ediyor — spec §10'un yasak iddia/marka güvenliği reviewer'ı (LLM
+   tabanlı içerik incelemesi) hâlâ uygulanmadı. "QA geçti" ifadesi "teknik
+   olarak dışa aktarılabilir" anlamına gelir, "kreatif olarak onaylandı"
+   anlamına gelmez.
+2. **Yerleşime (placement_id) özgü format doğrulaması yok.** Brief'teki
+   `placement_id` hiçbir yerde gerçek bir platform format kuralına
+   (en-boy oranı, maksimum süre, codec sınırı vb.) eşlenmiyor — bu,
+   uydurma bir kural tablosu yazmamak için bilinçli olarak atlandı.
+3. **UI yok.** QA raporu ve dışa aktarma yalnızca API üzerinden erişilebilir.
+4. **Export ve preview render aynı mekanizmayı paylaşıyor**
+   (`render_timeline_to_asset`) — export'a özgü ekstra bir doğrulama
+   (ör. gerçek yerleşim format kontrolü) eklenmedi, yalnızca QA kapısı var.
+
 ## Frontend (apps/web) — Safha 1 UI iskeleti (2026-09-11, agent/frontend-web)
 
 1. **Backend'in çoğu uç noktası henüz yok.** `backend/app/main.py` şu an

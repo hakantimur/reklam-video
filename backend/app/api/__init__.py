@@ -5,10 +5,12 @@ from app.api import (
     concepts,
     discover,
     events,
+    export,
     generation,
     jobs,
     plans,
     projects,
+    qa,
     render,
     revisions,
     settings,
@@ -32,6 +34,8 @@ ROUTERS = [
     generation.router,
     render.router,
     revisions.router,
+    qa.router,
+    export.router,
 ]
 
 __all__ = ["ROUTERS"]

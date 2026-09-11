@@ -258,6 +258,31 @@ vurgusu ekle") çağrıldı:
 `pytest -q`: 178 passed, 11 deselected (6 yeni test:
 `test_revisions_service.py` + `test_revisions_api.py`).
 
+## Safha 11 canlı QA + export kanıtı (2026-09-11)
+
+**Gerçek Synova revizyonuna karşı (`GET .../qa`):** dürüstçe
+`"passed": false` döndü, 3 sahne için ayrı ayrı "hiç kabul edilebilir
+çekim/üretim yok" uyarısı verdi — hiçbir sahte "hazır" iddiası yok.
+
+**Ayrı, minimal gerçek bir projede (tek `ai_generated` sahne, gerçek
+`google/veo-3.1-lite` çağrısıyla üretildi):**
+
+```
+GET  .../qa      -> {"passed": true, "issues": []}
+POST .../export  -> is basarili, sonuc:
+  Asset: exports/v001/export-09e6f3cd.mp4, type=export, origin=derived
+  ffprobe (bagimsiz dogrulama): h264 1080x1920 + aac, duration=4.053333s
+  Teknik QC: probe=pass, decode=pass, scene_detect=pass, blank_or_frozen=pass
+  metadata_json.qa_report: {"passed": true, "issues": []}
+```
+
+Mock testlerle ayrıca doğrulanan QA reddi durumları: sahnesiz/take'siz
+revizyon, başarısız teknik QC, `synthetic_test` kökenli asset, brief
+kare toplamıyla uyuşmayan plan — hepsi export'a hiç ulaşmadan reddediliyor.
+
+`pytest -q`: 188 passed, 11 deselected (10 yeni test:
+`test_qa_service.py`, `test_export_service.py`, `test_qa_export_api.py`).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

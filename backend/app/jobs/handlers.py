@@ -186,6 +186,16 @@ def _render_preview(session: Session, job: Job) -> dict:
     return {"asset_id": asset.id, "byte_size": asset.byte_size, "duration_us": asset.duration_us}
 
 
+@register_handler("export_final")
+def _export_final(session: Session, job: Job) -> dict:
+    """Spec §8.1 POST /projects/{id}/revisions/{revision_id}/export (Safha 11)."""
+
+    from app.services import export as export_service
+
+    asset = export_service.export_final(session, job.project_id, job.payload_json["revision_id"])
+    return {"asset_id": asset.id, "byte_size": asset.byte_size, "duration_us": asset.duration_us}
+
+
 def run_worker_once(
     session: Session, *, queue: JobQueue = job_queue, kinds: list[str] | None = None
 ) -> Job | None:
