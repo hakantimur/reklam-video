@@ -93,7 +93,11 @@ def run_discovery(
     session.flush()
 
     adb.launch_app(serial, package_id)
-    time.sleep(2)  # let the app cold-start before the first observation
+    # A real, asset-heavy app's cold start can take much longer than a
+    # flat sleep -- wait for it to actually be foreground (bounded), then
+    # give it a moment to finish its own splash/first-frame render.
+    adb.wait_for_foreground(serial, package_id, timeout_s=10.0)
+    time.sleep(2)
 
     controller = DeviceController(serial)
     working_memory: dict = {}

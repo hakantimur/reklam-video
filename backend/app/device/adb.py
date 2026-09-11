@@ -109,6 +109,40 @@ def launch_app(serial: str, package_id: str) -> None:
     )
 
 
+def foreground_package(serial: str) -> str | None:
+    """Best-effort read of the package currently focused on screen, parsed
+    from `dumpsys window`'s `mCurrentFocus` line. Returns None if it can't
+    be determined (never raises -- this is a polling helper, not a hard
+    requirement)."""
+    try:
+        output = _run(["-s", serial, "shell", "dumpsys", "window"])
+    except AdbError:
+        return None
+    match = re.search(r"mCurrentFocus=Window\{[^ ]+ [^ ]+ ([^/}]+)", output)
+    return match.group(1) if match else None
+
+
+def wait_for_foreground(serial: str, package_id: str, *, timeout_s: float = 10.0, poll_interval_s: float = 0.5) -> bool:
+    """Poll until `package_id` is the focused foreground app or `timeout_s`
+    elapses. A cold start of a real, asset-heavy app can take well over the
+    flat 2s sleep this used to be paired with -- found live (2026-09-11):
+    the discovery/capture vision agent's first observation landed on the
+    Android home screen mid-launch and it correctly (but wastefully, at
+    real API cost) requested a human takeover instead of proceeding.
+    Returns True once the app is confirmed foreground, False on timeout
+    (callers should proceed anyway -- this is a best-effort wait, not a
+    blocking guarantee, since `foreground_package` parsing can fail for
+    reasons unrelated to the app actually being ready)."""
+    import time
+
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if foreground_package(serial) == package_id:
+            return True
+        time.sleep(poll_interval_s)
+    return False
+
+
 def screenshot_png(serial: str) -> bytes:
     result = subprocess.run(
         [_adb_path(), "-s", serial, "exec-out", "screencap", "-p"],

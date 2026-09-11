@@ -209,6 +209,7 @@ def capture_gameplay_shot(
         raise BlockedError(f"Device {serial} is not connected", details={"serial": serial})
 
     adb.launch_app(serial, package_id)
+    adb.wait_for_foreground(serial, package_id, timeout_s=10.0)
     time.sleep(2)
 
     manager = capture_manager or CaptureManager()

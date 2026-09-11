@@ -415,4 +415,51 @@ referanslarını bu yeni çeşitli çekimlerden yeniden üretmek, 4) timeline/
 QA/export'u yeniden çalıştırıp yeni örnek videoyu kullanıcıya
 göndermek.
 
+## BLOKE ÇÖZÜLDÜ: gerçek uygulamayla tam düzeltme canlı doğrulandı (2026-09-11, onüçüncü tur)
+
+Kullanıcı OpenRouter hesabına gerçek bakiye ekledi (`GET /credits`:
+`total_credits: 25`, `total_usage: 15.15`). Devam edildi:
+
+- `discover` job'u iki kez daha "Android home screen" gerekçesiyle
+  `request_takeover` verdi — gerçek kök neden bulundu: `adb.launch_app`
+  sonrası sabit `time.sleep(2)` gerçek, ağır (65MB) bir uygulamanın soğuk
+  başlangıcı için yetersizdi; görü ajanının ilk gözlemi hâlâ launcher'ı
+  görüyordu. **Düzeltme:** `app/device/adb.py`'ye `foreground_package`/
+  `wait_for_foreground` eklendi (`dumpsys window`'un `mCurrentFocus`
+  satırını parse ediyor, hedef paket foreground olana kadar bekliyor,
+  bounded timeout ile) — hem `discovery.py` hem `capture.py`'de sabit
+  sleep'in ÖNÜNE eklendi. Mock testler eklendi (`tests/unit/test_adb.py`).
+- `discover` job'u yine de GameProfile'ı gerçek çeşitli oyun modlarıyla
+  güncelleyemedi (görü ajanı yavaş/dikkatli oynuyor, bütçe içinde tek bir
+  "Pattern Memory" alıştırmasından öteye geçemedi) — ama bu artık kritik
+  değil, çünkü asıl kullanılan `device_profiles.package_id` zaten doğru
+  pakete işaret ediyor.
+- 3 gameplay sahnesi de (`capture_shot` job'u) GERÇEK uygulamaya
+  (`com.noriloop.synova` v0.1.1) karşı yeniden yakalandı — hepsi teknik
+  QC'yi geçti (3. sahne 2 deneme `blank_or_frozen` ile reddedildi, 3.
+  denemede geçti — normal/beklenen bir retry deseni).
+  Kareler çıkarılıp görsel doğrulandı: artık gerçek marka renkleri/
+  "Pattern Memory" kartı görünüyor.
+- 3 AI sahnesi de bu YENİ, doğru referanslarla yeniden üretildi
+  (`google/veo-3.1-lite`, gerçek maliyet). Kareler görsel olarak
+  incelendi: üçü de artık gerçek "Baseline 1 of 5", "Repeat the pattern",
+  "Round 1 of 5" gibi gerçek UI metnini ve gerçek marka renklerini
+  doğru şekilde gösteriyor; CTA sahnesi hatta doğru yazılmış "synova"
+  kelimesini bile ekledi (önceki anlamsız/bozuk metin yerine).
+- Yeni take'ler seçildi, QA yeniden çalıştırıldı (**PASS**, 0 issue),
+  yeni final export üretildi: asset `cd5a8f69-efb6-4d30-ac06-12b7033ef342`,
+  `exports/v001/export-2b9ec7d5.mp4`, 10.35MB, 20.1sn, teknik QC pass.
+  Kullanıcıya gönderildi.
+
+**Hâlâ kapsam dışı/henüz tam çözülmedi:** Gerçek uygulamanın 5 farklı
+oyun kategorisi (Memory/Attention/Logic/Speed/Math) var, ama bu turda
+yakalanan gerçek gameplay hâlâ yalnızca "Pattern Memory" (Memory
+kategorisi) — çünkü uygulamanın kendi ilerleme/baseline akışı yavaş ve
+görü ajanı temkinli oynuyor. Bu, "sekiz farklı oyun" talebini tam
+karşılamıyor ama kullanıcının asıl kritik itirazını ("bu görüntüler
+benim değil" — yanlış/markasız uygulama) çözüyor. Gerçek çeşitlilik
+için ileride ayrı, daha uzun bütçeli bir keşif/yakalama turu (veya
+baseline akışını atlayıp doğrudan bir oyun moduna gitmeyi öğrenen bir
+navigation_json) gerekebilir.
+
 Bu bölüm ilerledikçe güncellenecektir.

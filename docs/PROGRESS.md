@@ -130,13 +130,31 @@ Düzeltilen (ücretsiz) kısım: gerçek `.aab` `bundletool` ile gerçek APK'ya
 ekranı); `device_profiles.package_id` veritabanında doğru pakete
 güncellendi.
 
-**BLOKE:** Gerçek uygulamayı yeniden keşfedip çeşitli gameplay'i yeniden
-yakalamak OpenRouter'a gerçek API çağrıları gerektiriyor.
-`GET /credits` ile doğrulandı: hesap bakiyesi tükenmiş
-(`total_credits: 15`, `total_usage: 15.15`). Kullanıcının
-openrouter.ai/settings/credits üzerinden gerçek bakiye eklemesi
-gerekiyor — para işlemi olduğu için otomatik yapılmadı. Ayrıntı ve
-sıradaki adımlar KNOWN_LIMITATIONS.md'de.
+**BLOKE (çözüldü):** Kullanıcı gerçek bakiye ekledi
+(`total_credits: 25`). Devamında `discover` job'u iki kez daha
+`request_takeover` verdi — gerçek kök neden bulundu: `adb.launch_app`
+sonrası sabit 2sn bekleme, gerçek (65MB) uygulamanın soğuk başlangıcı
+için yetersizdi. Düzeltme: `app/device/adb.py::wait_for_foreground`
+eklendi (mCurrentFocus'u pollar, bounded timeout), `discovery.py` ve
+`capture.py`'de kullanılıyor; mock testler eklendi
+(`tests/unit/test_adb.py`).
+
+3 gameplay sahnesi GERÇEK uygulamaya (`com.noriloop.synova` v0.1.1)
+karşı yeniden yakalandı (hepsi teknik QC pass), 3 AI sahnesi bu doğru
+referanslarla yeniden üretildi — kareler görsel doğrulandı: artık
+gerçek marka renkleri, gerçek "Baseline 1 of 5"/"Repeat the pattern" UI
+metni ve hatta doğru yazılmış "synova" kelimesi görünüyor. Yeni final
+export üretildi (asset `cd5a8f69-...`, 10.35MB, QA PASS) ve kullanıcıya
+gönderildi.
+
+`pytest -q`: **264 passed, 11 deselected**.
+
+Kalan sınırlama: gerçek uygulamanın 5 oyun kategorisi var
+(Memory/Attention/Logic/Speed/Math) ama bu turda yakalanan içerik hâlâ
+yalnızca Memory kategorisi (görü ajanı yavaş oynuyor, baseline akışını
+bütçe içinde tamamlayamadı) — "sekiz farklı oyun" çeşitliliği tam
+sağlanmadı, ama kullanıcının asıl kritik itirazı (yanlış/markasız
+uygulama) çözüldü. Ayrıntı KNOWN_LIMITATIONS.md.
 
 ## Safha durumu
 

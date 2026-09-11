@@ -30,6 +30,7 @@ def _fake_adb(monkeypatch, *, connected=True):
     monkeypatch.setattr(adb, "orientation", lambda serial: 0)
     monkeypatch.setattr(adb, "screenshot_png", lambda serial: _TINY_PNG)
     monkeypatch.setattr(adb, "launch_app", lambda serial, package: None)
+    monkeypatch.setattr(adb, "wait_for_foreground", lambda *a, **k: True)
     monkeypatch.setattr(adb, "tap", lambda serial, x, y: None)
     monkeypatch.setattr(adb, "swipe", lambda *a, **k: None)
     monkeypatch.setattr(adb, "press_back", lambda serial: None)
