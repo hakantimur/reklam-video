@@ -115,6 +115,41 @@ metninde hiç geçmiyor — bu, modelin gerçekten ekranı gözlemleyerek
 öğrendiğinin kanıtı, brief'i tekrarlaması değil. Toplam süre ~43 saniye,
 6 eylem + 1 sentez çağrısı ile.
 
+## Safha 7 canlı çekim kanıtı (2026-09-11, gerçek Synova + gerçek OpenRouter anahtarı)
+
+`POST /projects/{id}/shots/{shot_id}/capture` → arka plan worker'da `capture_shot`
+job'u çalıştı, Safha 6'da gerçek LLM ile üretilmiş ShotPlan'ın "gameplay"
+tipli ikinci sahnesi (`a75662a1-...`, amaç: "Showcase first colorful brain
+training game in action") için, aynı görsel-operatör döngüsünü (Safha 5)
+şimdi gerçek bir kayıt altında çalıştırarak.
+
+Gerçek `scrcpy` süreci (PID doğrudan `Get-Process` ile görüldü) kayda başladı,
+operatör 5 gerçek ekran görüntüsü + LLM kararı sonunda oyunun gerçekten
+oynandığını gözlemleyip `finish_discovery` ile sahneyi bitirdi, kayıt
+durduruldu. Sonuç:
+
+```
+Asset: captures/raw/shot-a75662a1-...-take1.mp4, 209003 bytes
+ffprobe (bagimsiz dogrulama, koordinator tarafindan ayrica calistirildi):
+  codec: h264 1080x2400 + opus audio, duration=34.705521s
+Teknik QC: probe=pass, decode=pass, scene_detect=pass, blank_or_frozen=pass
+Take: status=pending, attempt=1
+```
+
+Ayrıca doğrulanan davranışlar:
+- **Retake sayacı:** aynı shot için ikinci çağrı `attempt=2` üretiyor (mock
+  testle doğrulandı, `test_capture_second_attempt_increments`).
+- **Kontrol devri sırasında kayıp yok:** operatör `request_takeover` derse,
+  o ana kadarki kısmi kayıt silinmiyor — gerçek bir Asset+Take olarak
+  `status="rejected"`, `rejection_reason` dolu şekilde saklanıyor (kanıt
+  hiçbir zaman sessizce atılmıyor).
+- **Kapsam sınırı:** yalnızca `source_type="gameplay"` sahneler bu yoldan
+  çekiliyor; `ai_generated` sahneler için deneme, `ValidationAppError` ile
+  açıkça reddediliyor (video üretim sağlayıcısı entegrasyonu Safha 8'de).
+
+`pytest -q`: 149 passed, 11 deselected (6 yeni servis testi +
+`test_capture_service.py`, 2 yeni API testi `test_capture_api.py`).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

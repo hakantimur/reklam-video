@@ -75,6 +75,44 @@ def _discover(session: Session, job: Job) -> dict:
     }
 
 
+@register_handler("capture_shot")
+def _capture_shot(session: Session, job: Job) -> dict:
+    """Spec §8.1 POST /projects/{id}/shots/{shot_id}/capture (Safha 7)."""
+
+    from app.providers.openrouter import OpenRouterClient, OpenRouterTextVisionProvider
+    from app.services import capture as capture_service
+    from app.services import credentials as credentials_service
+    from app.services.errors import BlockedError
+
+    payload = job.payload_json
+    api_key = credentials_service.get_credential_value("openrouter")
+    if not api_key:
+        raise BlockedError("OpenRouter API anahtarı olmadan çekim yapılamaz.")
+
+    client = OpenRouterClient(api_key=api_key)
+    try:
+        provider = OpenRouterTextVisionProvider(client)
+        take = capture_service.capture_gameplay_shot(
+            session,
+            job.project_id,
+            payload["shot_id"],
+            serial=payload["serial"],
+            provider=provider,
+            model=payload.get("model", "anthropic/claude-haiku-4.5"),
+            max_actions=payload.get("max_actions", capture_service.DEFAULT_MAX_ACTIONS),
+            max_seconds=payload.get("max_seconds", capture_service.DEFAULT_MAX_SECONDS),
+        )
+    finally:
+        client.close()
+
+    return {
+        "take_id": take.id,
+        "asset_id": take.asset_id,
+        "status": take.status,
+        "attempt": take.attempt,
+    }
+
+
 def run_worker_once(
     session: Session, *, queue: JobQueue = job_queue, kinds: list[str] | None = None
 ) -> Job | None:

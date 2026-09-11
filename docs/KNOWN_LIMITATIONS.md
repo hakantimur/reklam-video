@@ -37,6 +37,28 @@ liste boşalana kadar kullanılmaz.
    final bir reklam render'ı DEĞİLDİR — yalnızca Remotion iskeletinin timeline
    sözleşmesini doğru uyguladığının kanıtıdır.
 
+## Safha 7 — gerçek çekim (2026-09-11)
+
+1. **Operatör kararı şeması, Safha 5'in keşif şeması ile aynı** (bilinçli
+   yeniden kullanım). `finish_discovery` eylemi bu bağlamda "istenen olay bu
+   sahnede gerçekleşti" anlamına geliyor — spec §11.2'nin ayrı
+   start/stop/mark_event operatör eylemleri henüz modele doğrudan
+   sunulmuyor; kayıt başlatma/durdurma tamamen `CaptureManager` tarafında,
+   operatörün haberi olmadan yönetiliyor. Çalışıyor ve canlı doğrulandı, ama
+   spec'in tam eylem setine göre daraltılmış.
+2. **Stüdyo arayüzünde "Çekim" adımı henüz yok.** Backend API
+   (`POST /projects/{id}/shots/{shot_id}/capture`) ve arka plan job'u tam
+   çalışır durumda ve canlı doğrulandı, ama `apps/web`'de bunu tetikleyip
+   ilerlemeyi izleyecek bir ekran henüz eklenmedi — şu an yalnızca doğrudan
+   API çağrısıyla kullanılabilir.
+3. **Birden fazla take arasından seçim / retake UI'ı yok.** `attempt` sayacı
+   ve `Take.status` (`pending`/`rejected`/`uncertain`) doğru işleniyor, ama
+   bunları karşılaştırıp birini `selected_take_id` yapacak bir ekran veya uç
+   nokta bu turda kapsam dışı.
+4. **Olay tabanlı otomatik in/out kırpma yok.** Her take'in tamamı
+   (`in_us=0`, `out_us=süre`) saklanıyor; `success_predicate`'e göre gerçek
+   olay anını video içinde bulup kırpmak (spec §11.6/12.x) ayrı bir iş.
+
 ## Frontend (apps/web) — Safha 1 UI iskeleti (2026-09-11, agent/frontend-web)
 
 1. **Backend'in çoğu uç noktası henüz yok.** `backend/app/main.py` şu an
