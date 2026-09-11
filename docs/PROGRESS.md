@@ -156,6 +156,28 @@ bütçe içinde tamamlayamadı) — "sekiz farklı oyun" çeşitliliği tam
 sağlanmadı, ama kullanıcının asıl kritik itirazı (yanlış/markasız
 uygulama) çözüldü. Ayrıntı KNOWN_LIMITATIONS.md.
 
+## Onbeşinci tur: AI klipler ortadan sapıp halüsinasyona dönüyordu — kök neden prompt'lardaydı, düzeltildi
+
+Kullanıcı yeniden reddetti ("videoda kullandığı görseller Synova'ya
+ait değil"). Bu sefer export'un TEK bir orta karesi değil, TÜM kareleri
+(2fps, uçtan uca) tek tek incelendi: Hook sahnesinin ilk ~1sn'si
+gerçek (gerçek açılış logosu) ama sonraki ~3sn tamamen halüsinasyon —
+3 sahte oyun (kelime bulmaca, neon üçgen, emoji eşleştirme) iç içe.
+
+Kök neden: bu 3 sahnenin `generation_prompt`'ları grounding hiç yokken
+yazılmıştı ve AÇIKÇA "4 farklı oyun", "8 farklı oyun sahnesi" gibi
+sahte çeşitlilik istiyordu — model tam olarak istenen şeyi yaptı,
+referans görüntü yalnızca zayıf bir öneriydi. Üç prompt da tek gerçek
+ekrana sadık kalacak ve "no scene changes/other apps/different game
+types" kısıtları içerecek şekilde yeniden yazıldı, 3 sahne yeniden
+üretildi. Bu sefer HER klibin TÜM kareleri incelendi (yalnızca orta
+kare değil) — hepsi artık tutarlı. Yeni final export: asset
+`6206ab6a-...`, sha256 `580113f2...`, QC/QA pass. Kullanıcıya
+gönderildi.
+
+Ders (KNOWN_LIMITATIONS.md'ye de yazıldı): AI klip doğrulaması artık
+her zaman TÜM karelerle yapılacak, tek orta kareye güvenilmeyecek.
+
 ## Safha durumu
 
 | Safha | Konu | Durum | Not |

@@ -498,13 +498,33 @@ bir dahaki sefere bir AI klibin kalitesini doğrularken KLİBİN TAMAMINI
 (birden fazla kare, ideal olarak `fps=1` ile tüm süre) incelemek
 gerekiyor, tek bir orta kare yeterli değil.
 
-**Henüz düzeltilmedi — daha fazla gerçek para harcamadan önce
-kullanıcıya bu bulgu raporlandı.** Olası yollar: (a) Hook sahnesinin
-prompt'unu "çeşitlilik" vurgusundan arındırıp tek gerçek ekrana sadık
-kalacak şekilde yeniden yazmak, (b) Hook sahnesi için AI üretimi yerine
-gerçek ekran kaydı + metin/grafik overlay kullanmak (çeşitlilik iddiası
-zaten caption/voice-over'da var, görüntünün bunu birebir göstermesi
-şart değil), (c) daha kısa AI klipleri (kaymanın daha az zamanı
-olması için) — kullanıcının tercihi bekleniyor.
+**DÜZELTİLDİ VE CANLI DOĞRULANDI (aynı gün, devam eden tur).** Kök
+neden netleşti: bu 3 sahnenin `generation_prompt`'ları (bu oturumun çok
+daha erken bir aşamasında, grounding hiç yokken director agent
+tarafından yazılmıştı) AÇIKÇA "4 farklı oyun", "8 farklı oyun sahnesi",
+"eight colorful mini-game icons" gibi ifadelerle sahte çeşitlilik
+istiyordu — Veo modeli tam olarak istenen şeyi yapıp bunu uydurdu,
+referans görüntü yalnızca zayıf bir öneri, metin prompt'u kadar
+belirleyici değil. Üç prompt de gerçek referans ekranına ("Repeat the
+pattern" / "Round 1 of 5" grid) sadık kalacak ve "no scene changes, no
+other apps, no different game types" gibi açık kısıtlar içerecek
+şekilde yeniden yazıldı (DB'de `shots.generation_prompt` doğrudan
+güncellendi). 3 sahne yeniden üretildi ve bu sefer HER KLİBİN TÜM
+kareleri (2fps, uçtan uca) tek tek incelendi — hepsi artık klip boyunca
+tutarlı şekilde gerçek ekranı gösteriyor. Yeni final export de aynı
+şekilde tam kare taramasıyla doğrulandı: asset
+`6206ab6a-193d-47c0-9fc9-75d7a074aa26`,
+`exports/v001/export-f5b5b589.mp4`, sha256 `580113f2...`, QC pass, QA
+pass. Kullanıcıya gönderildi.
+
+**Ders:** Bir AI klibinin gerçek referansa sadık kaldığını doğrulamak
+için TEK bir orta kareye bakmak yeterli değil — klip metin prompt'unun
+kendisi "farklı sahneler/çeşitlilik" istiyorsa (özellikle grounding
+eklenmeden önce yazılmış eski prompt'larda), model referans görüntüyü
+yalnızca gevşek bir öneri olarak kullanıp geri kalanını prompt'un
+kelimelerine göre üretir. Bundan sonra: (1) yeni bir AI sahnesi
+üretirken prompt'un "farklı/çeşitli/multiple" gibi kelimeler
+içermediğini önceden kontrol et, (2) her üretilen klibi göndermeden
+önce TÜM karelerini (fps=1-2, uçtan uca) tek tek incele.
 
 Bu bölüm ilerledikçe güncellenecektir.
