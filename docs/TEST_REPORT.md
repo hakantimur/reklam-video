@@ -536,6 +536,56 @@ test: `test_settle_real_cost.py` tamamen yeniden yazıldı —
 `test_openrouter_structured.py`'ye `usage.cost` birikimi için 2 test
 eklendi).
 
+## Gerçek hata: varyasyonlar seslendirmeyi sessizce kaybediyordu (2026-09-11, altıncı tur)
+
+Safha 10'da daha önce bulunan "taşınan bir sahnenin take'i kayboluyor"
+hatasının (bkz. yukarıdaki Safha 10 kanıtı) tam bir eşleniği,
+seslendirme (voice-over) Asset'leri için de vardı ve o zaman
+fark edilmemişti: `app/services/timeline.py::_voice_asset_for_shot`
+bir seslendirmeyi yalnızca `metadata_json.shot_id == <bu sahnenin id'si>`
+eşleşmesiyle buluyor; ama `create_revision_variation`'ın carry-forward
+yolu (`revisions.py`), talimat verilmeyen HER sahne için (talimat
+verilen için değil) her zaman yepyeni bir `Shot` satırı/id'si üretiyor.
+Yani: bir sahneye seslendirme üretildikten SONRA, o sahneyi hiç
+hedeflemeyen bir varyasyon oluşturulduğunda, o seslendirme sessizce
+"kayıp" görünüyordu — Taslak ekranı "Seslendirme üret" gösterip
+kullanıcıyı zaten ödediği bir sesi tekrar (gerçek parayla) üretmeye
+yönlendirebilirdi.
+
+**Bulma yöntemi:** Kod incelemesi sırasında, `_voice_asset_for_shot`'ın
+katı `shot_id` eşleşmesi ile `create_revision_variation`'ın carry-forward
+sahneleri için her zaman yeni bir Shot id'si ürettiği fark edildi —
+gerçek Synova projesinde önceden üretilmiş iki gerçek ElevenLabs
+seslendirmesi (Hook + CTA) olduğu bilindiğinden, bu doğrudan canlı test
+edilebilir bir hipotezdi.
+
+**Düzeltme:** `revisions.py`'e `_carry_forward_voice_asset(session,
+project_id, old_shot_id, new_shot_id)` eklendi — carry-forward edilen
+her sahne için (yalnızca talimat verilmeyenler, take carry-forward ile
+aynı kapsam) varsa mevcut seslendirme Asset'inin `metadata_json.shot_id`
+alanı yeni sahne id'sine güncelleniyor.
+
+**Canlı kanıt** (gerçek Synova projesi, revizyon `c835445c-…`):
+1. Değişiklik öncesi: seslendirme Asset'leri `dd4d9c89-…` (Hook) ve
+   `aa10b56a-…` (CTA) sahnelerine bağlıydı.
+2. Gerçek bir varyasyon isteği gönderildi — yalnızca montaj sahnesine
+   ("Add a touch more energy to the montage description text.") gerçek
+   bir yönetmen talimatı verildi; Hook ve CTA hedeflenmedi.
+3. Yeni revizyon `8d44364a-…` oluştu; Hook artık `396b2872-…`, CTA artık
+   `0c331bca-…` id'sinde.
+4. `GET .../assets?type=audio` ile doğrudan kontrol edildi: iki
+   seslendirme Asset'i de artık tam olarak bu yeni id'lere işaret
+   ediyordu (`role: voice_over` dahil diğer alanlar değişmedi).
+5. `POST .../timeline/build` tekrar çağrıldı: yeni Hook/CTA sahneleri
+   `hasVoiceOver: true`, değişen montaj sahnesi ise beklendiği gibi
+   `hasVoiceOver: false` (metni değiştiği için eski ses artık geçerli
+   değil — bilinçli olarak taşınmadı).
+
+Birim test eklendi:
+`test_revisions_service.py::
+test_variation_carries_forward_a_voice_over_asset_to_the_new_shot_id`.
+`pytest -q`: **213 passed, 11 deselected**.
+
 ## Canlı doğrulama engelleri (güncel)
 
 OpenRouter ve ElevenLabs API anahtarları bu oturumun başında Ayarlar

@@ -209,6 +209,52 @@ def test_variation_carries_forward_a_take_even_without_explicit_selection(monkey
     assert new_take.asset_id == asset.id
 
 
+def test_variation_carries_forward_a_voice_over_asset_to_the_new_shot_id(monkeypatch, db_session):
+    """A voice-over Asset points at its shot via inline
+    `metadata_json.shot_id` (no dedicated join table the way Takes have
+    one) — a carried-forward shot gets a brand new Shot row/id, so without
+    repointing that metadata, an already-generated, already-paid-for
+    voice-over would silently vanish from the Taslak screen and the
+    timeline the same way an unselected take used to."""
+
+    project, revision, shots = _setup_base_revision(
+        db_session,
+        shot_kwargs_list=[
+            {"source_type": "ai_generated", "purpose": "Hook", "target_frames": 90, "voice_text": "Merhaba"},
+            {"source_type": "composed", "purpose": "CTA", "target_frames": 90},
+        ],
+    )
+    hook_shot = shots[0]
+    voice_asset = Asset(
+        project_id=project.id, type="audio", origin="provider_generation",
+        relative_path="generated/audio/x.mp3", sha256="h", byte_size=1,
+        metadata_json={"shot_id": hook_shot.id, "role": "voice_over", "voice_id": "v1"},
+    )
+    db_session.add(voice_asset)
+    db_session.commit()
+
+    cta_shot = shots[1]
+    revised = _revised_shot(id=cta_shot.id, target_frames=cta_shot.target_frames, source_type="composed", purpose="New CTA")
+    from app.services import revisions as revisions_mod
+
+    monkeypatch.setattr(revisions_mod, "regenerate_shot", lambda *a, **k: revised)
+
+    new_revision = revisions_service.create_revision_variation(
+        db_session, project.id, revision.id,
+        shot_instructions={cta_shot.id: "Change CTA"},
+        provider=MagicMock(), model="m",
+    )
+
+    from app.services import plans as plans_service
+
+    new_hook_shot = plans_service.get_shots_for_revision(db_session, new_revision.id)[0]
+    assert new_hook_shot.id != hook_shot.id  # carry-forward always mints a new Shot row
+
+    db_session.refresh(voice_asset)
+    assert voice_asset.metadata_json["shot_id"] == new_hook_shot.id
+    assert voice_asset.metadata_json["role"] == "voice_over"  # untouched fields survive
+
+
 def test_variation_rejects_unknown_shot_id(db_session):
     project, revision, shots = _setup_base_revision(
         db_session, shot_kwargs_list=[{"source_type": "composed", "purpose": "CTA", "target_frames": 90}]

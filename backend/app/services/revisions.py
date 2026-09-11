@@ -22,12 +22,46 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.agents.director import regenerate_shot
+from app.models.asset import Asset
 from app.models.creative import Revision, Shot, Take
 from app.providers.base import TextVisionProvider
 from app.services import plans as plans_service
 from app.services import projects as projects_service
 from app.services import timeline as timeline_service
 from app.services.errors import NotFoundError, ValidationAppError
+
+
+def _carry_forward_voice_asset(session: Session, project_id: str, old_shot_id: str, new_shot_id: str) -> None:
+    """Voice-over Assets point at their shot via inline
+    `metadata_json.shot_id` — there is no dedicated join table the way
+    Takes have one, so a carried-forward shot's already-generated,
+    already-paid-for voice-over would otherwise be silently orphaned the
+    same way an unselected take used to silently disappear across a
+    variation (see this module's carry-forward take-selection fix). Since
+    the app only ever builds a timeline / shows a Taslak screen for the
+    latest revision, repointing the existing Asset's `shot_id` forward is
+    safe: no other in-app view still looks it up under the old shot id."""
+
+    voice_asset = (
+        session.execute(
+            select(Asset)
+            .where(
+                Asset.project_id == project_id,
+                Asset.type == "audio",
+                func.json_extract(Asset.metadata_json, "$.shot_id") == old_shot_id,
+                func.json_extract(Asset.metadata_json, "$.role") == "voice_over",
+            )
+            .order_by(Asset.created_at.desc())
+        )
+        .scalars()
+        .first()
+    )
+    if voice_asset is None:
+        return
+    metadata = dict(voice_asset.metadata_json or {})
+    metadata["shot_id"] = new_shot_id
+    voice_asset.metadata_json = metadata
+    session.add(voice_asset)
 
 
 def _get_revision(session: Session, project_id: str, revision_id: str) -> Revision:
@@ -164,6 +198,8 @@ def create_revision_variation(
                 session.add(carried_take)
                 session.flush()
                 new_shot.selected_take_id = carried_take.id
+
+            _carry_forward_voice_asset(session, project_id, base_shot.id, new_shot.id)
 
     session.flush()
     new_shots = plans_service.get_shots_for_revision(session, new_revision.id)
