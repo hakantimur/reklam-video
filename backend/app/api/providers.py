@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from app.api.errors import error_response
 from app.services.catalog import CatalogResult, CatalogService
 
 router = APIRouter(prefix="/providers", tags=["providers"])
@@ -41,3 +42,30 @@ def get_models() -> dict:
 def refresh_models() -> dict:
     """Spec §3.2: manual catalog refresh, bypassing the TTL."""
     return _serialize(CatalogService().refresh())
+
+
+@router.get("/voices")
+def get_voices() -> dict:
+    """Safha 8: real ElevenLabs voice list, for the voice-over generation
+    UI to populate a picker from — never a hardcoded/fake voice list."""
+
+    from app.providers.elevenlabs import ElevenLabsProvider
+    from app.services import credentials as credentials_service
+    from app.services.errors import BlockedError
+
+    api_key = credentials_service.get_credential_value("elevenlabs")
+    if not api_key:
+        return error_response(
+            BlockedError(
+                "ElevenLabs API anahtarı girilmeden ses listesi alınamaz.",
+                details={"missing": "elevenlabs_api_key"},
+            )
+        )
+
+    provider = ElevenLabsProvider(api_key=api_key)
+    try:
+        voices = provider.list_voices()
+    finally:
+        provider.close()
+
+    return {"voices": [{"voice_id": v.get("voice_id"), "name": v.get("name")} for v in voices]}

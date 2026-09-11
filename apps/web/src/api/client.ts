@@ -1,5 +1,6 @@
 import type {
   ApiErrorBody,
+  AssetSummary,
   BriefPayload,
   BriefResponse,
   CaptureJob,
@@ -7,9 +8,15 @@ import type {
   CreateProjectPayload,
   DeviceSummary,
   DiscoverJob,
+  ExportJob,
+  GenerationJob,
   Job,
+  QAReport,
+  RenderJob,
   Revision,
   Take,
+  Timeline,
+  VoiceOption,
   CredentialPayload,
   CredentialProvider,
   CredentialResponse,
@@ -239,6 +246,45 @@ export const api = {
     ),
 
   assetContentUrl: (assetId: string) => `${API_BASE_URL}/assets/${assetId}/content`,
+
+  listAssets: (projectId: string, params?: { type?: string; origin?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.type) query.set("type", params.type);
+    if (params?.origin) query.set("origin", params.origin);
+    const qs = query.toString();
+    return request<{ items: AssetSummary[] }>(
+      `/projects/${projectId}/assets${qs ? `?${qs}` : ""}`,
+    ).then((response) => response.items);
+  },
+
+  listVoices: () =>
+    request<{ voices: VoiceOption[] }>("/providers/voices").then((response) => response.voices),
+
+  generateScene: (projectId: string, shotId: string, videoModel: string) =>
+    request<GenerationJob>(`/projects/${projectId}/shots/${shotId}/generate-scene`, {
+      method: "POST",
+      body: JSON.stringify({ video_model: videoModel }),
+    }),
+
+  generateVoice: (projectId: string, shotId: string, voiceId: string, language?: string) =>
+    request<GenerationJob>(`/projects/${projectId}/shots/${shotId}/generate-voice`, {
+      method: "POST",
+      body: JSON.stringify(language ? { voice_id: voiceId, language } : { voice_id: voiceId }),
+    }),
+
+  buildTimeline: (projectId: string) =>
+    request<Timeline>(`/projects/${projectId}/timeline/build`, { method: "POST" }),
+
+  getTimeline: (projectId: string) => request<Timeline | null>(`/projects/${projectId}/timeline`),
+
+  startRenderPreview: (projectId: string) =>
+    request<RenderJob>(`/projects/${projectId}/render/preview`, { method: "POST" }),
+
+  getRevisionQA: (projectId: string, revisionId: string) =>
+    request<QAReport>(`/projects/${projectId}/revisions/${revisionId}/qa`),
+
+  startExport: (projectId: string, revisionId: string) =>
+    request<ExportJob>(`/projects/${projectId}/revisions/${revisionId}/export`, { method: "POST" }),
 };
 
 /** Bir hatayı kullanıcıya gösterilecek tek satırlık Türkçe metne çevirir. */

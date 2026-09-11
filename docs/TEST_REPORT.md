@@ -310,6 +310,36 @@ için) — kaynak koddan gerçek bir Windows kurulumunun çalıştığı tekrar
 tekrar kanıtlandı. Bağımsız/önkoşulsuz bir installer paketi bu oturumda
 üretilmedi (bkz. KNOWN_LIMITATIONS.md).
 
+## Safha 8-11 UI + gerçek bir revizyon hatası (2026-09-11, üçüncü tur)
+
+Stüdyo'ya "Taslak" (AI sahne/seslendirme üretimi + timeline + önizleme
+render) ve "Çıktı" (QA + dışa aktarma) ekranları eklendi. Gerçek Synova
+projesinde tarayıcıda uçtan uca denendi:
+
+- Var olan bir AI sahnesinin videosu ve var olan bir seslendirmenin sesi
+  doğru şekilde `<video>`/`<audio>` oynatıcılarında göründü (gerçek asset
+  içeriğine bağlı).
+- "Sahneyi üret" tıklaması gerçek bir `generate_ai_scene` job'unu
+  tetikledi, ~60 saniyede tamamlandı, buton otomatik "Yeniden üret"e
+  döndü.
+- "Timeline oluştur" → "Önizleme render et" gerçek bir 8.3MB/20sn önizleme
+  MP4'ü üretip oynatıcıda gösterdi.
+- "Çıktı" ekranı gerçek eksik sahneleri listeleyip "Dışa aktar"ı doğru
+  şekilde devre dışı bıraktı.
+
+**Bu canlı test, Safha 10'da gerçek bir hata buldu:** daha önce oluşturulan
+bir varyasyon revizyonu "en son revizyon" haline geldiğinde, hiç açıkça
+"seçilmemiş" ama var olan bir AI sahnesi take'i (bir "seç" düğmesi hiç
+tıklanmadığı için) yeni revizyona taşınmıyordu — kod yalnızca
+`shots.selected_take_id` açıkça set edilmişse taşıyordu. Düzeltme:
+`app/services/revisions.py` artık `app/services/timeline.py`'nin
+render'da kullandığı aynı `selected_or_best_take` fallback'ini kullanıyor.
+Bunu keşfeden test verisi (kendi Safha 10 doğrulamamdan kalan bir
+varyasyon revizyonu) temizlendi, gerçek revizyon 1 (tüm gerçek take'leriyle)
+tekrar "en son revizyon" oldu.
+
+`pytest -q`: 189 passed, 11 deselected (1 yeni regresyon testi).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

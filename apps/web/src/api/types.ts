@@ -151,6 +151,73 @@ export interface Take {
   created_at: string;
 }
 
+// --- generation (Safha 8: AI sahne + seslendirme) ----------------------
+
+export interface GenerationJob {
+  job_id: string;
+  state: string;
+}
+
+export interface VoiceOption {
+  voice_id: string;
+  name: string | null;
+}
+
+export interface AssetSummary {
+  id: string;
+  project_id: string;
+  type: string;
+  origin: string;
+  relative_path: string;
+  byte_size: number;
+  duration_us: number | null;
+  metadata_json: Record<string, unknown>;
+  created_at: string;
+}
+
+// --- timeline / render (spec §16, Safha 9) ------------------------------
+
+export interface TimelineTrackItem {
+  id: string;
+  shot_id: string | null;
+  asset_id: string | null;
+  start_frame: number;
+  duration_frames: number;
+}
+
+export interface TimelineTrack {
+  id: string;
+  kind: "video" | "graphics" | "audio" | "subtitle";
+  items: TimelineTrackItem[];
+}
+
+export interface Timeline {
+  schema_version: number;
+  revision_id: string;
+  fps: { num: number; den: number };
+  duration_frames: number;
+  canvas: { width: number; height: number };
+  tracks: TimelineTrack[];
+}
+
+export interface RenderJob {
+  job_id: string;
+  state: string;
+}
+
+// --- QA / export (Safha 11) --------------------------------------------
+
+export interface QAReport {
+  revision_id: string;
+  passed: boolean;
+  issues: string[];
+}
+
+export interface ExportJob {
+  job_id: string;
+  state: string;
+}
+
 // --- settings / credentials (spec §8.1 PUT /settings/credentials/{provider}) ---
 
 export type CredentialProvider = "openrouter" | "elevenlabs";

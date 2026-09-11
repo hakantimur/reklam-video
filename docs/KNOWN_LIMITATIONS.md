@@ -72,10 +72,12 @@ liste boşalana kadar kullanılmaz.
    yanlış bilgilendirici). Canlı doğrulanan `google/veo-3.1-lite` çağrısının
    gerçek maliyeti bu tahminden değil, OpenRouter'ın kendi kullanım
    panelinden teyit edilmelidir.
-2. **Toplu/otomatik üretim yok.** Her `ai_generated` sahne ve her
-   seslendirme tek tek, elle (API çağrısıyla) tetikleniyor; Stüdyo'da bunun
-   için bir ekran henüz eklenmedi (Çekim ekranı yalnızca `gameplay`
-   sahneleri kapsıyor).
+2. ~~Toplu/otomatik üretim yok, Stüdyo'da ekran yok~~ — **çözüldü
+   (2026-09-11, üçüncü tur)**: Stüdyo'ya gerçek bir "Taslak" ekranı
+   eklendi (her AI sahnesi için üret/yeniden üret + video önizleme, her
+   seslendirme için gerçek ElevenLabs ses listesinden seçim + üret + audio
+   önizleme). Toplu üretim hâlâ yok — her sahne/seslendirme tek tek
+   tetikleniyor, sırayla değil paralel de değil.
 3. **Lipsync (`LipSyncProvider`) hâlâ yalnızca arayüz düzeyinde.** Üretilen
    ses ile bir AI insan sahnesini senkronlamak bu turda kapsam dışı.
 4. **Ses varlığı `shots.voice_asset_id` gibi bir kolona değil, sadece
@@ -101,18 +103,24 @@ liste boşalana kadar kullanılmaz.
    yüzdesi raporlanmıyor, sadece queued/running/succeeded/failed durumu var.
 5. **Editör arayüzü (sahne sırasını değiştirme, crop, manuel senkron) yok**
    — timeline tamamen sunucu tarafında, sahne sırasına göre otomatik
-   üretiliyor.
+   üretiliyor. Taslak ekranı "Timeline oluştur"/"Önizleme render et"
+   düğmeleriyle bunu tetikleyip sonucu oynatabiliyor (2026-09-11, üçüncü
+   tur, tarayıcıda CANLI denendi), ama sırayı/kırpmayı değiştiremiyor.
 
 ## Safha 10 — revizyon/kilit/varyasyon (2026-09-11)
 
 1. **UI yok.** Varyasyon üretimi yalnızca API üzerinden kullanılabilir;
    Stüdyo'da revizyonlar arası karşılaştırma, kilit açma/kapama veya
    "bu sahneyi revize et" ekranı henüz eklenmedi.
-2. **Yalnızca tek-sahne revizyonu var.** Bir çağrıda birden fazla sahne
+2. **~~Bir take hiç "seçilmemişse" varyasyonda sessizce kaybolabiliyordu~~
+   — çözüldü (2026-09-11, canlı test sırasında bulundu):** taşıma mantığı
+   artık `selected_take_id` yoksa da `timeline.selected_or_best_take`
+   fallback'ini kullanıyor; ayrıntı için bkz. PROGRESS.md Safha 10 satırı.
+3. **Yalnızca tek-sahne revizyonu var.** Bir çağrıda birden fazla sahne
    revize edilebilir (`shot_instructions` bir dict), ama her biri ayrı bir
    LLM çağrısıyla, sırayla işleniyor — toplu/tutarlı bir "tüm reklamı yeniden
    düşün" modu yok.
-3. **Kilit yalnızca `visual` alanı için zorunlu kılınıyor.** `voice`/
+4. **Kilit yalnızca `visual` alanı için zorunlu kılınıyor.** `voice`/
    `caption`/`timing` kilitleri varsa, yönetmenin döndürdüğü yeni değer
    yerine eski değer korunuyor (kodda var), ama bu üç kilit için `visual`
    gibi açık bir 422 reddi yok — yalnızca sessizce eski değer kullanılıyor.
@@ -133,7 +141,10 @@ liste boşalana kadar kullanılmaz.
    `placement_id` hiçbir yerde gerçek bir platform format kuralına
    (en-boy oranı, maksimum süre, codec sınırı vb.) eşlenmiyor — bu,
    uydurma bir kural tablosu yazmamak için bilinçli olarak atlandı.
-3. **UI yok.** QA raporu ve dışa aktarma yalnızca API üzerinden erişilebilir.
+3. ~~UI yok~~ — **çözüldü (2026-09-11, üçüncü tur)**: Stüdyo'ya gerçek bir
+   "Çıktı" ekranı eklendi (QA raporu + "Dışa aktar", QA geçmeden devre
+   dışı) ve tarayıcıda CANLI denendi — gerçek eksik sahneler doğru
+   listelendi, düğme doğru şekilde devre dışı görünüyordu.
 4. **Export ve preview render aynı mekanizmayı paylaşıyor**
    (`render_timeline_to_asset`) — export'a özgü ekstra bir doğrulama
    (ör. gerçek yerleşim format kontrolü) eklenmedi, yalnızca QA kapısı var.

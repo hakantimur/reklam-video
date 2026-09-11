@@ -9,7 +9,9 @@ import { useUIStore } from "../state/uiStore";
 import { BriefForm } from "./BriefForm";
 import { CaptureStep } from "./CaptureStep";
 import { ConceptsStep } from "./ConceptsStep";
+import { DeliveryStep } from "./DeliveryStep";
 import { DiscoveryStep } from "./DiscoveryStep";
+import { DraftStep } from "./DraftStep";
 
 interface StepDef {
   key: string;
@@ -18,17 +20,18 @@ interface StepDef {
 }
 
 // Spec §5.1: "Stüdyo adımları: Brief → Keşif → Senaryo → Çekim → Taslak → Düzenle → Çıktı."
-// Brief, Keşif, Senaryo ve Çekim işlevsel; kalanlar sonraki safhalarda
-// eklenecek (bkz. docs/PROGRESS.md). Devre dışı adımlar tıklanabilir sahte
-// buton olarak değil, açık "henüz yok" durumuyla gösteriliyor.
+// Yalnızca Düzenle (tam editör: sahne sırası değiştirme, crop, manuel
+// senkron) sonraki bir safhada eklenecek (bkz. docs/PROGRESS.md). Devre
+// dışı adımlar tıklanabilir sahte buton olarak değil, açık "henüz yok"
+// durumuyla gösteriliyor.
 const STEPS: StepDef[] = [
   { key: "brief", label: "Brief", enabled: true },
   { key: "kesif", label: "Keşif", enabled: true },
   { key: "senaryo", label: "Senaryo", enabled: true },
   { key: "cekim", label: "Çekim", enabled: true },
-  { key: "taslak", label: "Taslak", enabled: false },
+  { key: "taslak", label: "Taslak", enabled: true },
   { key: "duzenle", label: "Düzenle", enabled: false },
-  { key: "cikti", label: "Çıktı", enabled: false },
+  { key: "cikti", label: "Çıktı", enabled: true },
 ];
 
 export function StudioPage() {
@@ -65,6 +68,8 @@ export function StudioPage() {
           <Route path="kesif" element={<DiscoveryStep projectId={activeProjectId} />} />
           <Route path="senaryo" element={<ConceptsStep projectId={activeProjectId} />} />
           <Route path="cekim" element={<CaptureStep projectId={activeProjectId} />} />
+          <Route path="taslak" element={<DraftStep projectId={activeProjectId} />} />
+          <Route path="cikti" element={<DeliveryStep projectId={activeProjectId} />} />
           <Route path="*" element={<Navigate to="brief" replace />} />
         </Routes>
       )}

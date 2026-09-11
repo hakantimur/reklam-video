@@ -165,6 +165,50 @@ def test_variation_carries_forward_selected_take_under_new_shot_id(monkeypatch, 
     assert new_take.shot_id == new_gameplay_shot.id
 
 
+def test_variation_carries_forward_a_take_even_without_explicit_selection(monkeypatch, db_session):
+    """An AI-generated/gameplay shot whose take was never explicitly
+    "selected" (no select-take UI action happened) must still survive a
+    variation of an unrelated shot — losing it silently would be a real
+    regression a user would only discover once it's too late."""
+
+    project, revision, shots = _setup_base_revision(
+        db_session,
+        shot_kwargs_list=[
+            {"source_type": "ai_generated", "purpose": "Hook", "target_frames": 90},
+            {"source_type": "composed", "purpose": "CTA", "target_frames": 90},
+        ],
+    )
+    hook_shot = shots[0]
+    asset = Asset(
+        project_id=project.id, type="video", origin="provider_generation",
+        relative_path="generated/video/x.mp4", sha256="h", byte_size=1,
+    )
+    db_session.add(asset)
+    db_session.flush()
+    take = Take(shot_id=hook_shot.id, asset_id=asset.id, attempt=1, status="pending")
+    db_session.add(take)
+    db_session.commit()  # note: hook_shot.selected_take_id is never set
+
+    cta_shot = shots[1]
+    revised = _revised_shot(id=cta_shot.id, target_frames=cta_shot.target_frames, source_type="composed", purpose="New CTA")
+    from app.services import revisions as revisions_mod
+
+    monkeypatch.setattr(revisions_mod, "regenerate_shot", lambda *a, **k: revised)
+
+    new_revision = revisions_service.create_revision_variation(
+        db_session, project.id, revision.id,
+        shot_instructions={cta_shot.id: "Change CTA"},
+        provider=MagicMock(), model="m",
+    )
+
+    from app.services import plans as plans_service
+
+    new_hook_shot = plans_service.get_shots_for_revision(db_session, new_revision.id)[0]
+    assert new_hook_shot.selected_take_id is not None
+    new_take = db_session.get(Take, new_hook_shot.selected_take_id)
+    assert new_take.asset_id == asset.id
+
+
 def test_variation_rejects_unknown_shot_id(db_session):
     project, revision, shots = _setup_base_revision(
         db_session, shot_kwargs_list=[{"source_type": "composed", "purpose": "CTA", "target_frames": 90}]
