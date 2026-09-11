@@ -12,6 +12,7 @@ from app.api import (
     projects,
     qa,
     render,
+    review,
     revisions,
     settings,
 )
@@ -34,6 +35,7 @@ ROUTERS = [
     generation.router,
     render.router,
     revisions.router,
+    review.router,
     qa.router,
     export.router,
 ]

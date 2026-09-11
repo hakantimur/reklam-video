@@ -4,6 +4,7 @@ import pytest
 
 from app.models.asset import Asset
 from app.models.creative import Revision, Shot, Take
+from app.models.qa import QAReport as QAReportRow
 from app.services import projects as projects_service
 from app.services import qa as qa_service
 from app.services.errors import NotFoundError, ValidationAppError
@@ -89,6 +90,34 @@ def test_qa_fails_when_frame_total_mismatches_brief(db_session):
     report = qa_service.run_revision_qa(db_session, project.id, revision.id)
     assert not report.passed
     assert any("Toplam sahne süresi" in issue for issue in report.issues)
+
+
+def test_qa_fails_when_content_review_failed(db_session):
+    project, revision = _setup_project(db_session, target_frames=90)
+    shot, take, asset = _add_shot_with_take(db_session, project.id, revision.id, 0, qc_outcome="pass")
+    db_session.add(
+        QAReportRow(
+            revision_id=revision.id, asset_id=asset.id, scope="content",
+            checks_json={"reasoning": "Uses a forbidden claim", "defects": ["forbidden claim used"]},
+            reviewer_model="test/model", outcome="fail", human_status="pending",
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+    db_session.commit()
+
+    report = qa_service.run_revision_qa(db_session, project.id, revision.id)
+    assert not report.passed
+    assert any("içerik incelemesini geçemedi" in issue for issue in report.issues)
+
+
+def test_qa_passes_when_content_review_is_absent(db_session):
+    """Content review is optional — a never-reviewed take must not block
+    an otherwise technically-clean QA pass."""
+    project, revision = _setup_project(db_session, target_frames=90)
+    _add_shot_with_take(db_session, project.id, revision.id, 0, qc_outcome="pass")
+
+    report = qa_service.run_revision_qa(db_session, project.id, revision.id)
+    assert report.passed
 
 
 def test_qa_unknown_revision_is_404(db_session):

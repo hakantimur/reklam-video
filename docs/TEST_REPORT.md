@@ -395,6 +395,33 @@ BudgetEntry: entry_type=settlement, amount_microusd=320000, confidence=confirmed
 `test_settle_real_cost.py`, artı `test_openrouter_video_flow.py`'ye bir
 assertion eklendi).
 
+## İçerik/marka güvenliği reviewer'ı (2026-09-11, dördüncü tur)
+
+Spec §10'un reviewer ajanı gerçekten uygulandı: `app/agents/reviewer.py`
++ `app/services/review.py` + `POST /projects/{id}/shots/{shot_id}/review`.
+Gerçek Synova projesindeki gerçek gameplay Take'ine karşı CANLI
+doğrulandı:
+
+```
+sample_frames_png() gercek videodan 4 kare cikardi
+review_take() -> outcome: pass
+reasoning: "The sampled frames clearly demonstrate active gameplay...
+  Frame 1 shows the initial state (0 of 4 selected), frames 2-4 show
+  progressive player engagement with visible cell selections (1 of 4,
+  then 2 of 4)..."
+```
+
+Bu, modelin gerçekten kareleri görüp somut, doğrulanabilir ayrıntılar
+verdiğinin kanıtı (genel/şablon bir cevap değil). Sonuç `qa_reports`
+tablosuna (`scope=content`) kalıcı yazıldı; `GET .../qa` bu revizyona
+tekrar çağrıldığında, incelenen sahne için hiçbir yeni sorun eklenmedi
+(pass olduğu için), eksik 2 sahne için eski hatalar aynen kaldı — içerik
+incelemesinin QA'ya doğru şekilde entegre olduğu, ama zorunlu olmadığı
+(hiç incelenmemiş sahneleri bloklamadığı) doğrulandı.
+
+`pytest -q`: 204 passed, 11 deselected (8 yeni test: `test_review_service.py`,
+`test_review_api.py`, artı `test_qa_service.py`'ye 2 yeni test).
+
 ## Canlı doğrulama engelleri (değişmedi)
 
 OpenRouter/ElevenLabs API anahtarı hâlâ girilmedi — LLM yönetmen/operatör/

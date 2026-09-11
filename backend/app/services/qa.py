@@ -1,13 +1,14 @@
 """Spec §21 Safha 11: QA gate a revision must pass before final export.
 
-Deliberately narrow and honest about what it checks — spec's full reviewer
-agent (brand-safety / content review, spec §10) is not implemented yet (see
-docs/KNOWN_LIMITATIONS.md), so this only verifies what is mechanically
-checkable from data already in the database: every shot has a take/asset
-whose technical QC passed, none of it comes from a `synthetic_test` origin
-(spec §7.2: that origin explicitly blocks final QA), and the frame budget
-still adds up. A `passed: True` here means "technically exportable", not
-"creatively approved".
+Checks what is mechanically verifiable from data already in the database:
+every shot has a take/asset whose technical QC passed, none of it comes
+from a `synthetic_test` origin (spec §7.2: that origin explicitly blocks
+final QA), the frame budget still adds up, and — if a content review
+(`app.services.review`, spec §10) was ever run against a take's asset —
+its latest verdict didn't fail. Content review is NOT mandatory: a take
+that was never reviewed passes on technical grounds alone, so `passed:
+True` here means "technically exportable, and content-clean where
+reviewed", not "every frame was creatively approved by an LLM".
 """
 
 from dataclasses import dataclass, field
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.models.asset import Asset
 from app.services import plans as plans_service
 from app.services import projects as projects_service
+from app.services import review as review_service
 from app.services import timeline as timeline_service
 from app.services.errors import NotFoundError, ValidationAppError
 
@@ -69,5 +71,12 @@ def run_revision_qa(session: Session, project_id: str, revision_id: str) -> QARe
             issues.append(f"Sahne '{shot.purpose}' → Take {take.id} teknik QC sonucu belirsiz, elle onay gerekir.")
         elif qc_outcome is None:
             issues.append(f"Sahne '{shot.purpose}' → Take {take.id} için teknik QC hiç çalıştırılmamış.")
+
+        content_review = review_service.get_latest_content_review_for_asset(session, take.asset_id)
+        if content_review is not None and content_review.outcome == "fail":
+            defects = ", ".join(content_review.checks_json.get("defects") or []) or content_review.checks_json.get(
+                "reasoning", ""
+            )
+            issues.append(f"Sahne '{shot.purpose}' içerik incelemesini geçemedi: {defects}")
 
     return QAReport(revision_id=revision.id, passed=not issues, issues=issues)

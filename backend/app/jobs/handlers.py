@@ -223,6 +223,40 @@ def _export_final(session: Session, job: Job) -> dict:
     return {"asset_id": asset.id, "byte_size": asset.byte_size, "duration_us": asset.duration_us}
 
 
+@register_handler("review_take")
+def _review_take(session: Session, job: Job) -> dict:
+    """Spec §8.1 POST /projects/{id}/shots/{shot_id}/review (Safha 10/11)."""
+
+    from app.providers.openrouter import OpenRouterClient, OpenRouterTextVisionProvider
+    from app.services import credentials as credentials_service
+    from app.services import review as review_service
+    from app.services.errors import BlockedError
+
+    payload = job.payload_json
+    api_key = credentials_service.get_credential_value("openrouter")
+    if not api_key:
+        raise BlockedError("OpenRouter API anahtarı olmadan içerik incelemesi yapılamaz.")
+
+    client = OpenRouterClient(api_key=api_key)
+    try:
+        report = review_service.review_shot_take(
+            session,
+            job.project_id,
+            payload["shot_id"],
+            provider=OpenRouterTextVisionProvider(client),
+            model=payload.get("model", "anthropic/claude-haiku-4.5"),
+        )
+    finally:
+        client.close()
+
+    return {
+        "report_id": report.id,
+        "outcome": report.outcome,
+        "reasoning": report.checks_json.get("reasoning"),
+        "defects": report.checks_json.get("defects"),
+    }
+
+
 def run_worker_once(
     session: Session, *, queue: JobQueue = job_queue, kinds: list[str] | None = None
 ) -> Job | None:

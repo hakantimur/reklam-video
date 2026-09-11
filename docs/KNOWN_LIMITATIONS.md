@@ -10,10 +10,19 @@ liste boşalana kadar kullanılmaz.
    gerçek anahtarını Ayarlar ekranından girdi, Windows Credential Manager'a
    kaydedildi. Yönetmen (concept/plan/sahne prompt üretimi), operatör (oyun
    kontrol stratejisi, keşif+çekim) ve video üretimi (`/videos` submit-
-   poll-download) artık hepsi CANLI doğrulandı. Reviewer ajanı (spec §10,
-   otomatik take değerlendirmesi) henüz uygulanmadı — Take'ler şu an
-   yalnızca teknik QC'ye göre `pending`/`rejected`/`uncertain` oluyor,
-   içerik/marka uyumu bir insan veya ayrı bir reviewer çağrısı gerektiriyor.
+   poll-download) artık hepsi CANLI doğrulandı. ~~Reviewer ajanı (spec
+   §10, otomatik take değerlendirmesi) henüz uygulanmadı~~ — **çözüldü
+   (2026-09-11, dördüncü tur)**: `POST /projects/{id}/shots/{shot_id}/review`
+   gerçek sahneden 4 kare örnekleyip (spec'in reviewer prompt'unun
+   gerektirdiği gibi, metin açıklamasından değil) gerçek bir vision LLM
+   çağrısıyla `pass`/`fail`/`uncertain` + somut kanıt/kusur listesi
+   üretiyor, `qa_reports` tablosuna kalıcı yazıyor. `run_revision_qa` artık
+   varsa en son içerik incelemesini de kontrol ediyor (fail ise export'u
+   bloklar) — ama içerik incelemesi ZORUNLU değil: hiç incelenmemiş bir
+   take yalnızca teknik gerekçelerle geçebilir. Gerçek Synova projesinde
+   CANLI doğrulandı: gerçek gameplay kaydından 4 kare örneklenip modele
+   gönderildi, model "0 of 4 selected" → "2 of 4" gibi somut, gerçek
+   ekrandan gözlemlenen ayrıntılarla `pass` verdisi verdi (uydurma değil).
 2. ~~ElevenLabs API anahtarı yok~~ — **çözüldü (2026-09-11)**: kullanıcı
    gerçek anahtarını girdi, `list_voices()` ile canlı doğrulandı (21 ses
    bulundu). TTS üretimi (`synthesize`) artık CANLI doğrulandı — gerçek
@@ -138,13 +147,18 @@ liste boşalana kadar kullanılmaz.
 
 ## Safha 11 — QA + teslim (2026-09-11)
 
-1. **İçerik/marka güvenliği reviewer'ı yok.** QA yalnızca mekanik olarak
-   kontrol edilebilir şeyleri (take var mı, teknik QC geçti mi, asset
-   kökeni `synthetic_test` mi, kare toplamı brief'le uyuşuyor mu) kontrol
-   ediyor — spec §10'un yasak iddia/marka güvenliği reviewer'ı (LLM
-   tabanlı içerik incelemesi) hâlâ uygulanmadı. "QA geçti" ifadesi "teknik
-   olarak dışa aktarılabilir" anlamına gelir, "kreatif olarak onaylandı"
-   anlamına gelmez.
+1. ~~İçerik/marka güvenliği reviewer'ı yok~~ — **çözüldü (2026-09-11,
+   dördüncü tur)**: `app/services/review.py` + `POST .../review` eklendi,
+   gerçek kare örneklemesi + gerçek vision LLM çağrısıyla CANLI doğrulandı
+   (bkz. yukarıdaki Safha 8/10 dışı "OpenRouter API anahtarı" satırındaki
+   ayrıntı). Ama içerik incelemesi **isteğe bağlı** — hiç çalıştırılmamışsa
+   QA'yı bloklamıyor, yalnızca çalıştırılıp `fail` dönerse bloklar. Bu
+   yüzden "QA geçti" hâlâ "teknik (ve varsa incelenmiş içerik açısından)
+   dışa aktarılabilir" anlamına gelir, "her kare mutlaka bir LLM tarafından
+   incelendi" anlamına gelmez — bunu zorunlu kılmak, önceden doğrulanmış
+   canlı export akışını (hiç reviewer çalıştırmadan geçen) geriye dönük
+   bozar, bu yüzden bilinçli olarak yapılmadı. UI'da bu incelemeyi
+   tetikleyecek bir düğme de henüz yok (yalnızca API).
 2. **Yerleşime (placement_id) özgü format doğrulaması yok.** Brief'teki
    `placement_id` hiçbir yerde gerçek bir platform format kuralına
    (en-boy oranı, maksimum süre, codec sınırı vb.) eşlenmiyor — bu,

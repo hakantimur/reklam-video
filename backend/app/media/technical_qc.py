@@ -193,6 +193,39 @@ def detect_blank_or_frozen_frames(
     return ratio, frozen
 
 
+def sample_frames_png(path: Path, count: int = 4) -> list[bytes]:
+    """Grab `count` evenly-spaced frames (first to last, inclusive) as PNG
+    bytes — spec §10's reviewer agent judges a take from real sampled
+    frames, never from a text description of what the clip should show."""
+
+    capture = cv2.VideoCapture(str(path))
+    if not capture.isOpened():
+        raise ToolMissingError("opencv_could_not_open_video")
+
+    try:
+        total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_frames <= 0:
+            raise ToolMissingError("opencv_could_not_read_frame_count")
+
+        count = max(1, min(count, total_frames))
+        indices = [round(i * (total_frames - 1) / max(count - 1, 1)) for i in range(count)]
+
+        frames: list[bytes] = []
+        for index in indices:
+            capture.set(cv2.CAP_PROP_POS_FRAMES, index)
+            ok, frame = capture.read()
+            if not ok:
+                continue
+            ok, encoded = cv2.imencode(".png", frame)
+            if ok:
+                frames.append(encoded.tobytes())
+        if not frames:
+            raise ToolMissingError("opencv_could_not_decode_any_sampled_frame")
+        return frames
+    finally:
+        capture.release()
+
+
 def run_technical_qc(path: Path) -> TechnicalQCReport:
     report = TechnicalQCReport()
 
