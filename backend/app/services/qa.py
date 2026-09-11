@@ -16,8 +16,8 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from app.models.asset import Asset
+from app.models.project import Brief
 from app.services import plans as plans_service
-from app.services import projects as projects_service
 from app.services import review as review_service
 from app.services import timeline as timeline_service
 from app.services.errors import NotFoundError, ValidationAppError
@@ -41,7 +41,15 @@ def run_revision_qa(session: Session, project_id: str, revision_id: str) -> QARe
     if not shots:
         raise ValidationAppError("Bu revizyonda hiç sahne yok.", details={"revision_id": revision_id})
 
-    brief = projects_service.get_latest_brief(session, project_id)
+    # The specific Brief this revision's plan was actually generated
+    # against — not whatever the "latest" Brief happens to be now. A
+    # revision's `brief_id` is set once (spec §7.2's `revisions.brief_id`
+    # FK) and carried forward by every later variation (see
+    # `app.services.revisions.create_revision_variation`); comparing
+    # against "latest" instead would make QA permanently fail every
+    # existing revision the moment a user edits the brief afterward, even
+    # though nothing about the revision itself became invalid.
+    brief = session.get(Brief, revision.brief_id)
     issues: list[str] = []
 
     total_frames = sum(s.target_frames for s in shots)

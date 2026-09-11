@@ -310,4 +310,35 @@ edilmemiş spec özelliklerinin şema iskeleti:
   `synova_test`) mevcut. Bu, emülatör köprüsü ve kontrol döngüsü testlerinin
   (Safha 4) API anahtarı gerekmeden canlı yapılabileceği anlamına gelir.
 
+## Kullanıcı yönetmen incelemesi bulguları (2026-09-11, onuncu tur)
+
+Gerçek export (`exports/v001/export-70c5965b.mp4`, sha256 `298935b1...`)
+kullanıcı tarafından izlendi. Doğrulanan sorunlar:
+
+1. **AI sahneleri gerçek Synova'yı göstermiyor (kritik, kök neden
+   bulundu, düzeltme bu turda yapılıyor)** — `generate_ai_scene_take`
+   `reference_image_paths`'i hiç kullanmıyordu; provider katmanı
+   (`app/providers/openrouter.py`) ve model (`google/veo-3.1-lite`,
+   canlı katalogda `supports_reference_images: true`) bunu zaten
+   destekliyor. Düzeltme: gerçek bir Synova ekran görüntüsünü (emülatör
+   `emulator-5554`'ten ADB ile) base64 data URI'a çevirip
+   `reference_image_paths`'e geçirmek.
+2. **ElevenLabs sesi robotik (araştırma + düzeltme bu turda)** — hangi
+   `voice_id` kullanıldığı ve `voice_settings` (stability/similarity_boost/
+   style) hiç geçilmediği kontrol edilecek.
+3. Donuk/statik görünen ardışık gameplay çekimleri — her çekim kendi
+   başına `blank_or_frozen` QC'sini geçiyor ama zaman çizelgesinde yan
+   yana geldiklerinde komşu çekimle karşılaştıran bir kontrol yok. QC
+   şu an her take'i izole değerlendiriyor. **Henüz düzeltilmedi** —
+   kapsam dışı bırakıldı çünkü kök neden (uydurma görüntü) düzeltilirse
+   AI sahneleri muhtemelen zaten daha dinamik olacak; gameplay
+   çekimleri için ayrı bir iyileştirme gerekirse sonraki turda ele
+   alınacak.
+4. CTA sahnesinde bozuk/anlamsız uygulama ikonu metni — Veo'nun UI-mockup
+   ağırlıklı sahnelerde sahte metin üretme eğilimi, muhtemelen prompt
+   mühendisliğiyle (metin/ikon içeren sahnelerden kaçınma) azaltılabilir.
+   **Henüz düzeltilmedi**, kapsam dışı.
+5. Altyazı rozeti kısa metinlerde ("Şimdi İndir") konumlandırma
+   tutarsızlığı. **Henüz düzeltilmedi**, kapsam dışı.
+
 Bu bölüm ilerledikçe güncellenecektir.

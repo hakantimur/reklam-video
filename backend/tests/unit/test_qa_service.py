@@ -125,3 +125,33 @@ def test_qa_unknown_revision_is_404(db_session):
 
     with pytest.raises(NotFoundError):
         qa_service.run_revision_qa(db_session, project.id, "does-not-exist")
+
+
+def test_qa_frame_budget_check_uses_the_revision_own_brief_not_the_latest_one(db_session):
+    """A revision's `brief_id` (spec §7.2) is the specific Brief version
+    its plan was actually generated against, carried forward unchanged by
+    every later variation (`app.services.revisions.create_revision_variation`
+    propagates `brief_id=base_revision.brief_id`). QA must check the
+    frame budget against THAT brief, not whatever the project's current
+    "latest" brief happens to be — otherwise editing the brief after a
+    plan already exists (a normal, legitimate action) would make QA fail
+    forever on every existing revision, even though nothing about the
+    revision itself changed. Found live: exactly this happened on a real
+    project whose brief had been edited (750-frame target) after its
+    plan (600 frames) was already generated and fully produced."""
+
+    project, revision = _setup_project(db_session, target_frames=90)
+    _add_shot_with_take(db_session, project.id, revision.id, 0, qc_outcome="pass")
+
+    # editing the brief afterward must not retroactively break this
+    # already-existing, already-correct revision's QA
+    projects_service.put_brief(
+        db_session, project.id, audience="t", single_message="t", objective="install",
+        style_id="s", language="tr", target_frames=180, fps_num=30, fps_den=1,
+        placement_id="p", budget_microusd=1, product_name="Synova", description="d", cta="c",
+    )
+
+    report = qa_service.run_revision_qa(db_session, project.id, revision.id)
+
+    assert report.passed
+    assert report.issues == []

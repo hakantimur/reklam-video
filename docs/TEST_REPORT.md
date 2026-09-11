@@ -917,3 +917,29 @@ tam süre → aynen istendiği, katalog erişimi başarısız → eski davranı�
 (tam hedef süre) düşüldüğü.
 
 `pytest -q`: **254 passed, 11 deselected**.
+
+## Gerçek hata: QA frame-bütçe kontrolü yanlış (en güncel) brief'e bakıyordu (2026-09-11, onuncu tur)
+
+Gerçek Synova projesinde tam üretim tamamlandıktan sonra `run_revision_qa`
+çalıştırılınca gerçek bir hata alındı: "Toplam sahne süresi (600 kare)
+brief hedefiyle (750 kare) uyuşmuyor" — her sahnenin içeriği tamamen
+doğruyken. Kök neden: `qa.py`, `plans_service.get_latest_brief`
+kullanıyordu, ama bu oturumda daha önce brief 750 kareye güncellenmişti
+(plan zaten 600 kare üzerine kurulmuşken). `Revision.brief_id`
+(spec §7.2) tam olarak "bu revizyonun planı hangi brief'e göre
+üretildi" bilgisini taşıyor ve `create_revision_variation` bunu her
+zaman değişmeden ileri taşıyor — QA'nın "latest" yerine
+`session.get(Brief, revision.brief_id)` kullanması gerekiyordu.
+
+**Düzeltme:** `qa.py`'de brief lookup `session.get(Brief, revision.brief_id)`
+oldu (`projects_service` importu artık kullanılmadığı için kaldırıldı).
+Regresyon testi eklendi: `test_qa_frame_budget_check_uses_the_revision_own_brief_not_the_latest_one`
+— bir revizyon oluşturuyor, brief'i SONRADAN farklı bir target_frames'e
+güncelliyor, ve QA'nın hâlâ PASS verdiğini doğruluyor (revizyonun kendi
+orijinal brief'ine göre değerlendirildiği için).
+
+Düzeltmeden sonra gerçek Synova projesinde QA ilk kez **PASS** verdi (0
+issue) ve gerçek final export başarıyla üretildi (bkz. PROGRESS.md
+"Onuncu tur").
+
+`pytest -q`: **255 passed, 11 deselected**.

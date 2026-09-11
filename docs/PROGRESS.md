@@ -7,6 +7,52 @@ engelli), `done` (kod + test + canlı doğrulama tamam).
 Son güncelleme: 2026-09-11 (koordinatör oturumu — Safha 0-11 canlı
 doğrulandı, Safha 12 kısmi/in-progress; ayrıntı bu dosyanın altında).
 
+## Onuncu tur (2026-09-11): gerçek Synova projesi ilk kez uçtan uca tamamlandı, sonra kullanıcı yönetmen incelemesi 2 kök sorun buldu
+
+`_pick_generation_duration_s` düzeltmesi canlı doğrulandı: CTA sahnesi
+(hedef 2.5sn) artık gerçekten 4.0sn olarak Veo'ya istendi ve üretim
+başarılı oldu (job d1a70392, gerçek maliyet $0.32). Ardından eksik 3.
+gameplay sahnesi gerçek emülatörden yeniden yakalandı (ilk deneme
+`blank_or_frozen` QC'sinden haklı olarak reddedildi, 2. deneme geçti).
+QA çalıştırıldığında brief'in daha önce bu oturumda 750 kareye
+düzenlenmiş olması (plan 600 kare üzerine kurulmuştu) yüzünden
+`run_revision_qa`'nın `get_latest_brief` kullanması gerçek bir hataya
+yol açtı — düzeltme: `session.get(Brief, revision.brief_id)` (bkz.
+`app/services/qa.py`, regresyon testi `test_qa_frame_budget_check_uses_the_revision_own_brief_not_the_latest_one`).
+Düzeltmeden sonra QA ilk kez gerçekten **PASS** verdi (0 issue), final
+export gerçekten üretildi: asset `6f880891-d34d-43e4-a686-d4be834973b5`,
+`exports/v001/export-70c5965b.mp4`, 10.79MB, 20.1sn, sha256
+`298935b1...bccb4d84` — kullanıcının indirdiği dosyayla (`preview-81ec6287.mp4`)
+sha256 birebir aynı, yani gerçekten aynı üretim.
+
+Kullanıcı bu videoyu izleyip "uzman yönetmen gözüyle" değerlendirme
+istedi. Ben ffmpeg ile gerçek kareler çıkarıp görsel inceleme yaptım ve
+5 sorun buldum (donuk/statik gameplay algısı, CTA'da bozuk/anlamsız
+metin, bir deformasyon artefaktı, dil uyuşmazlığı, altyazı rozeti
+konumlandırma tutarsızlığı). Kullanıcı bunları doğruladı AMA daha temel
+iki kök sorunu BEN gözden kaçırmıştım:
+
+1. **"synova bu değil. görüntüler tamamen uydurma."** — AI ile üretilen
+   sahneler gerçek Synova oyununu hiç göstermiyor, jenerik/halüsine
+   mobil oyun görüntüsü üretiliyor. Kök neden: `generate_ai_scene_take`
+   (`app/services/generation.py`), `VideoGenerationRequest`'i hiçbir
+   zaman `reference_image_paths` ile doldurmuyor — oysa bu alan
+   provider katmanında (`app/providers/base.py`, `app/providers/openrouter.py`)
+   zaten var ve `google/veo-3.1-lite` modeli canlı katalogda
+   `supports_reference_images: true` döndürüyor. Yani üretim hiçbir
+   zaman gerçek oyun görüntüsüne "grounded" olmadan tamamen metin
+   promptundan (halüsinasyona açık) çalıştırılıyordu. **Bu bir uygulama
+   hatası** — spec'in reference-image desteğini varsayan tasarımı hiç
+   uygulanmamıştı.
+2. **"ses çok robotik."** — ElevenLabs TTS sesi kullanıcıya robotik
+   geliyor; hangi `voice_id`/model ayarlarının kullanıldığı ve
+   `stability`/`similarity_boost`/`style` gibi ayarlanabilir
+   parametrelerin hiç geçilmediği araştırılacak.
+
+Kullanıcının talimatı: bulgulara göre gerçek uygulama kodu revize
+edilecek ve gerçek (ücretli API'lerle) bir örnek video yeniden
+üretilecek. Bu iş bu turda devam ediyor — ayrıntı KNOWN_LIMITATIONS.md.
+
 ## Safha durumu
 
 | Safha | Konu | Durum | Not |
