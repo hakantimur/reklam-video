@@ -328,3 +328,41 @@ def test_variation_unknown_revision_is_404(db_session):
             shot_instructions={"x": "y"},
             provider=MagicMock(), model="m",
         )
+
+
+def test_set_shot_locks_merges_a_partial_update(db_session):
+    project, revision, shots = _setup_base_revision(
+        db_session,
+        shot_kwargs_list=[
+            {
+                "source_type": "ai_generated", "purpose": "Hook", "target_frames": 90,
+                "locks": {"visual": False, "voice": False, "caption": False, "timing": False},
+            },
+        ],
+    )
+    shot = shots[0]
+
+    updated = revisions_service.set_shot_locks(db_session, project.id, shot.id, {"voice": True})
+
+    assert updated.locks_json == {"visual": False, "voice": True, "caption": False, "timing": False}
+
+    updated_again = revisions_service.set_shot_locks(db_session, project.id, shot.id, {"visual": True})
+    # a second, disjoint update must not clobber the first one
+    assert updated_again.locks_json == {"visual": True, "voice": True, "caption": False, "timing": False}
+
+
+def test_set_shot_locks_unknown_shot_is_404(db_session):
+    project = projects_service.create_project(db_session, name="Kilit Testi Projesi")
+
+    with pytest.raises(NotFoundError):
+        revisions_service.set_shot_locks(db_session, project.id, "does-not-exist", {"visual": True})
+
+
+def test_set_shot_locks_rejects_a_shot_from_another_project(db_session):
+    project_a, revision_a, shots_a = _setup_base_revision(
+        db_session, shot_kwargs_list=[{"source_type": "composed", "purpose": "CTA", "target_frames": 90}]
+    )
+    project_b = projects_service.create_project(db_session, name="Baska Proje")
+
+    with pytest.raises(NotFoundError):
+        revisions_service.set_shot_locks(db_session, project_b.id, shots_a[0].id, {"visual": True})

@@ -613,3 +613,78 @@ completions/vision) — yukarıdaki "Canlı doğrulama engelleri (değişmedi)"
 notu artık güncel değil, bilgi için burada bırakıldı. Bu oturumun tek
 gerçek doğrulama engeli, yukarıda açıklanan tarayıcı-sandbox ağ
 izolasyonu.
+
+## Kilit/varyasyon UI'ı ve gerçek bir SQLite eşzamanlılık hatası (2026-09-11, yedinci tur)
+
+Safha 10'un (revizyon/kilit/varyasyon motoru) hiçbir arayüzü yoktu — bu
+oturum boyunca yalnızca doğrudan API çağrılarıyla (curl/python) test
+edilmişti. Bu turda:
+
+- `PATCH /projects/{id}/shots/{shot_id}/locks` eklendi
+  (`app/services/revisions.py::set_shot_locks` — `takes.select_take`'in
+  `selected_take_id`'yi yerinde güncellemesiyle aynı desen, yeni bir
+  revizyon açmıyor).
+- Senaryo ekranındaki (`ConceptsStep.tsx`) her sahne kartına 4 kilit
+  onay kutusu (görsel/ses/yazı/süre) ve bir talimat kutusu, altına da
+  "Varyasyon oluştur" düğmesi eklendi.
+
+**Canlı kanıt** (gerçek Synova projesi):
+1. `PATCH .../shots/396b2872-.../locks {"voice": true}` → `200`, kilit
+   gerçekten kaydedildi (`GET .../plan` ile doğrulandı).
+2. Aynı sahneye gerçek bir görsel-değişikliği talimatı verilerek
+   `POST .../variation` çağrıldı — yeni revizyonda sesin (daha önce
+   yalnızca birim testiyle doğrulanabilmiş olan ikinci taşıma yolu, bkz.
+   yukarıdaki "Ses kilitli, talimatla revize edilen sahnelerde de
+   seslendirme taşınsın" bölümü) gerçekten korunduğu doğrulandı.
+
+**Bu canlı test sırasında üçüncü, altyapısal bir hata bulundu ve
+düzeltildi:** adım 2'deki `POST .../variation` isteği ilk denemede
+gerçek bir `500 Internal Server Error` döndü. Aynı istek, hiçbir kod
+değişikliği yapılmadan hemen tekrar gönderildiğinde başarıyla `201`
+döndü — bu, transient bir alt sistem hatasına işaret ediyordu.
+`app/api/errors.py` incelenince görüldü ki `ServiceError`'ın varsayılan
+`status_code`'u 500'dür — yani hata düzgün yakalanıp JSON zarfına
+sarılmıştı (kod çökmedi, log'da traceback de yoktu), ama alttaki gerçek
+istisna 500'e denk düşüyordu. `app/core/db.py` incelenince: SQLite'ın
+kendi varsayılan `busy_timeout`'u `0` — yani bir yazıcı, yazma kilidini
+(WAL modunda bile aynı anda yalnızca bir yazıcıya izin verilir) hemen
+alamazsa beklemek yerine anında "database is locked" ile başarısız
+oluyor. Bu uygulamada arka planda sürekli çalışan bir job worker thread'i
+VE (log'lardaki sürekli `GET /jobs` isteklerinden anlaşıldığı üzere)
+muhtemelen açık bir frontend sekmesi aynı SQLite dosyasına eşzamanlı
+yazıyor/okuyor; `create_revision_variation` gibi çok satırlı bir yazma
+işlemi bu ikisinden biriyle çakıştığında bu hataya yol açabiliyordu.
+
+**Düzeltme:** `app/core/db.py::make_engine`'in bağlantı pragma'larına
+`PRAGMA busy_timeout=5000` eklendi — bir yazıcı artık kilidi hemen
+alamazsa 5 saniyeye kadar bekliyor, anında başarısız olmuyor.
+
+**Canlı doğrulama (gerçek backend'e karşı, gerçek eşzamanlılık ile):**
+1. 8 thread'den sürekli gerçek `GET /projects/{id}/jobs` isteği atılırken
+   5 gerçek `PATCH .../locks` yazma isteği gönderildi — hepsi `200`,
+   sıfır hata.
+2. Daha güçlü bir kanıt (gerçek yazıcı-yazıcı çakışması): 6 gerçek
+   sahnenin her biri için 4'er kez, toplam 24 gerçek `PATCH .../locks`
+   isteği TAM OLARAK AYNI ANDA (24 ayrı thread, hepsi `.start()` sonra
+   hepsi `.join()`) gönderildi — hepsi `200`, sıfır hata.
+
+Birim test eklendi: `tests/unit/test_db_pragmas.py` — gerçek uygulama
+motorunun bağlantılarında `PRAGMA busy_timeout` değerinin gerçekten 5000
+olduğunu doğrudan sorgulayan bir test, iki gerçek SQLite bağlantısının
+(thread'lerde) aynı satır için çakıştığında `busy_timeout=5000` ile
+beklediğini (hata vermediğini) kanıtlayan bir test, ve aynı senaryonun
+`busy_timeout=0` ile (düzeltmeden önceki gerçek varsayılan) gerçekten
+`OperationalError` ürettiğini kanıtlayan bir "sağlık kontrolü" testi
+(böylece testin kendisinin bir şey kanıtlamadığı, yanlışlıkla her zaman
+geçtiği ihtimali de elenmiş oluyor).
+
+Ayrıca `PATCH .../locks` ve `POST .../variation` için backend testleri
+eklendi (`test_revisions_service.py`, `test_revisions_api.py`).
+
+`npm run build` (`tsc -b && vite build`) temiz geçti — ama önceki
+turlarda olduğu gibi, tarayıcı önizleme sandbox'ı backend'e ağdan
+erişemediği için yeni kilit onay kutularının/varyasyon düğmesinin
+gerçek bir tarayıcıda tıklanması görsel olarak doğrulanamadı; yalnızca
+gerçek HTTP uç noktaları üzerinden (yukarıdaki gibi) doğrulandı.
+
+`pytest -q` (backend dizininden): **222 passed, 11 deselected**.

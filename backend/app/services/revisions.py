@@ -71,6 +71,30 @@ def _get_revision(session: Session, project_id: str, revision_id: str) -> Revisi
     return revision
 
 
+def set_shot_locks(session: Session, project_id: str, shot_id: str, locks: dict[str, bool]) -> Shot:
+    """Toggle one or more of a shot's `visual`/`voice`/`caption`/`timing`
+    locks in place (spec §5.3 "sahne kilidi, ses kilidi") — this mutates
+    the current revision's Shot row directly rather than creating a new
+    revision, the same way `app.services.takes.select_take` mutates
+    `selected_take_id` in place: a lock is metadata about how future
+    variations should treat this shot, not content the version history
+    needs to preserve a snapshot of."""
+
+    shot = session.get(Shot, shot_id)
+    if shot is None:
+        raise NotFoundError(f"Shot {shot_id} not found", details={"shot_id": shot_id})
+    revision = session.get(Revision, shot.revision_id)
+    if revision is None or revision.project_id != project_id:
+        raise NotFoundError(f"Shot {shot_id} not found for this project", details={"shot_id": shot_id})
+
+    current = dict(shot.locks_json or {})
+    current.update(locks)
+    shot.locks_json = current
+    session.commit()
+    session.refresh(shot)
+    return shot
+
+
 def create_revision_variation(
     session: Session,
     project_id: str,

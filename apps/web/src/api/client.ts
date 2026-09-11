@@ -11,6 +11,7 @@ import type {
   ExportJob,
   GenerationJob,
   Job,
+  PlanShot,
   QAReport,
   RenderJob,
   Revision,
@@ -219,6 +220,23 @@ export const api = {
     }),
 
   getPlan: (projectId: string) => request<Revision | null>(`/projects/${projectId}/plan`),
+
+  updateShotLocks: (projectId: string, shotId: string, locks: Partial<Record<string, boolean>>) =>
+    request<PlanShot>(`/projects/${projectId}/shots/${shotId}/locks`, {
+      method: "PATCH",
+      body: JSON.stringify(locks),
+    }),
+
+  createVariation: (
+    projectId: string,
+    revisionId: string,
+    shotInstructions: Record<string, string>,
+    model?: string,
+  ) =>
+    request<Revision>(`/projects/${projectId}/revisions/${revisionId}/variation`, {
+      method: "POST",
+      body: JSON.stringify(model ? { shot_instructions: shotInstructions, model } : { shot_instructions: shotInstructions }),
+    }),
 
   listDevices: () => request<DeviceSummary[]>("/devices"),
 

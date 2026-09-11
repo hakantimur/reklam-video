@@ -20,6 +20,13 @@ class VariationRequest(BaseModel):
     model: str = _DEFAULT_DIRECTOR_MODEL
 
 
+class ShotLocksPatch(BaseModel):
+    visual: bool | None = None
+    voice: bool | None = None
+    caption: bool | None = None
+    timing: bool | None = None
+
+
 class ShotOut(BaseModel):
     id: str
     order_index: int
@@ -100,3 +107,19 @@ def create_variation(
         change_summary=new_revision.change_summary,
         shots=[_shot_out(s) for s in shots],
     )
+
+
+@router.patch("/projects/{project_id}/shots/{shot_id}/locks", response_model=ShotOut)
+def update_shot_locks(
+    project_id: str, shot_id: str, body: ShotLocksPatch, session: Session = Depends(get_session)
+):
+    """Spec §5.3 "sahne kilidi, ses kilidi": lock/unlock which of a shot's
+    visual/voice/caption/timing fields a future variation is allowed to
+    change. Only the fields present in the request body are touched."""
+
+    locks = body.model_dump(exclude_none=True)
+    try:
+        shot = revisions_service.set_shot_locks(session, project_id, shot_id, locks)
+    except ServiceError as exc:
+        return error_response(exc)
+    return _shot_out(shot)
